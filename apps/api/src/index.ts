@@ -2,12 +2,15 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import prisma from "./lib/prisma";
+import pinoHttp from "pino-http";
+import { logger } from "./lib/logger";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.use(pinoHttp({ logger }));
 app.use(cors());
 app.use(express.json());
 
