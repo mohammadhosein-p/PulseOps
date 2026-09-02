@@ -102,6 +102,92 @@ app.post("/api/orders", async (req: Request, res: Response) => {
     }
 });
 
+app.get("/api/orders", async (req: Request, res: Response) => {
+    const { status } = req.query;
+
+    try {
+        const orders = await prisma.order.findMany({
+            where: status ? { status: String(status) as any } : undefined,
+            include: {
+                items: { include: { product: true } },
+                events: { orderBy: { createdAt: "desc" }, take: 1 },
+            },
+            orderBy: { createdAt: "desc" },
+        });
+        res.json(orders);
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        res.status(500).json({ error: "Failed to fetch orders" });
+    }
+});
+
+app.get("/api/orders/:id", async (req: Request, res: Response) => {
+    const id = req.params.id as string;
+
+    try {
+        const order = await prisma.order.findUnique({
+            where: { id },
+            include: {
+                items: { include: { product: true } },
+                events: { orderBy: { createdAt: "asc" } },
+            },
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        res.json(order);
+    } catch (error) {
+        console.error("Error fetching order:", error);
+        res.status(500).json({ error: "Failed to fetch order details" });
+    }
+});
+
+app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
+    try {
+        const totalOrders = await prisma.order.count();
+        const completedOrders = await prisma.order.count({
+            where: { status: "COMPLETED" },
+        });
+        const pendingOrders = await prisma.order.count({
+            where: {
+                status: {
+                    in: [
+                        "PENDING",
+                        "PAYMENT_PROCESSING",
+                        "PAYMENT_COMPLETED",
+                        "INVENTORY_ALLOCATED",
+                    ],
+                },
+            },
+        });
+        const failedOrders = await prisma.order.count({
+            where: {
+                status: {
+                    in: ["PAYMENT_FAILED", "INVENTORY_FAILED", "CANCELLED"],
+                },
+            },
+        });
+
+        const revenueResult = await prisma.order.aggregate({
+            _sum: { totalAmount: true },
+            where: { status: "COMPLETED" },
+        });
+
+        res.json({
+            totalOrders,
+            completedOrders,
+            pendingOrders,
+            failedOrders,
+            totalRevenue: revenueResult._sum.totalAmount || 0,
+        });
+    } catch (error) {
+        console.error("Error calculating dashboard stats:", error);
+        res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`PulseOps API running on port ${PORT}`);
 });
