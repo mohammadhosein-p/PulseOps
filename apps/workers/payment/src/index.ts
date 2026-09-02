@@ -93,6 +93,20 @@ async function run() {
                         },
                     },
                 });
+
+                await producer.send({
+                    topic: "payment-failed",
+                    messages: [
+                        {
+                            key: orderId,
+                            value: JSON.stringify({
+                                orderId,
+                                reason: "Order failed, payment gateway failed or time exceeded",
+                                timestamp: new Date().toISOString(),
+                            }),
+                        },
+                    ],
+                });
             }
         },
     });

@@ -124,6 +124,22 @@ async function run() {
                         },
                     },
                 });
+
+                await producer.send({
+                    topic: "inventory-failed",
+                    messages: [
+                        {
+                            key: orderId,
+                            value: JSON.stringify({
+                                orderId,
+                                reason:
+                                    error.message ||
+                                    "Current stock is not enough for your order",
+                                timestamp: new Date().toISOString(),
+                            }),
+                        },
+                    ],
+                });
             }
         },
     });
