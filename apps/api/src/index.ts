@@ -8,11 +8,14 @@ import { connectKafkaProducer, publishEvent } from "./lib/kafka";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { redis } from "./lib/redis";
+import { register, metricsMiddleware, orderCounter } from "./lib/metrics";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+app.use(metricsMiddleware);
 
 app.use(pinoHttp({ logger }));
 app.use(cors());
@@ -33,13 +36,54 @@ const orderRateLimiter = rateLimit({
     },
 });
 
-app.get("/health", (req: Request, res: Response) => {
-    res.status(200).json({
-        status: "ok",
-        service: "pulseops-api",
-        timestamp: new Date().toISOString(),
-    });
+// ==========================================
+// Kubernetes Health & Observability Probes
+// ==========================================
+
+// Liveness Probe
+app.get("/healthz", (req: Request, res: Response) => {
+    res.status(200).json({ status: "alive", uptime: process.uptime() });
 });
+
+// Readiness Probe
+app.get("/ready", async (req: Request, res: Response) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+
+        const redisPing = await redis.ping();
+        if (redisPing !== "PONG") {
+            throw new Error("Redis did not return PONG");
+        }
+
+        res.status(200).json({
+            status: "ready",
+            database: "connected",
+            redis: "connected",
+            timestamp: new Date().toISOString(),
+        });
+
+    } catch (error: any) {
+        logger.error({ error: error.message }, "Readiness check failed");
+        res.status(503).json({
+            status: "not_ready",
+            error: error.message,
+        });
+    }
+});
+
+// Prometheus Metrics
+app.get("/metrics", async (req: Request, res: Response) => {
+    try {
+        res.set("Content-Type", register.contentType);
+        res.end(await register.metrics());
+    } catch (error) {
+        res.status(500).end(error);
+    }
+});
+
+// ==========================================
+// Business Endpoints
+// ==========================================
 
 app.get("/api/products", async (req: Request, res: Response) => {
     const CACHE_KEY = "cache:products:all";
@@ -55,10 +99,10 @@ app.get("/api/products", async (req: Request, res: Response) => {
         });
 
         await redis.set(CACHE_KEY, JSON.stringify(products), "EX", 60);
-        
+
         res.json(products);
     } catch (error) {
-        console.error("Error fetching products:", error);
+        logger.error({ error }, "Error fetching products");
         res.status(500).json({ error: "Failed to fetch products" });
     }
 });
@@ -75,6 +119,7 @@ app.post(
             !Array.isArray(items) ||
             items.length === 0
         ) {
+            orderCounter.inc({ status: "invalid_payload" });
             return res.status(400).json({
                 error: "Invalid order payload. Customer email and items are required.",
             });
@@ -89,11 +134,13 @@ app.post(
                     where: { id: item.productId },
                 });
                 if (!product) {
+                    orderCounter.inc({ status: "product_not_found" });
                     return res.status(404).json({
                         error: `Product with ID ${item.productId} not found`,
                     });
                 }
                 if (product.stock < item.quantity) {
+                    orderCounter.inc({ status: "out_of_stock" });
                     return res.status(400).json({
                         error: `Not enough stock for ${product.name}`,
                     });
@@ -140,9 +187,12 @@ app.post(
                 createdAt: newOrder.createdAt.toISOString(),
             });
 
+            orderCounter.inc({ status: "created" });
+
             res.status(201).json(newOrder);
         } catch (error) {
-            console.error("Error creating order:", error);
+            orderCounter.inc({ status: "failed" });
+            logger.error({ error }, "Error creating order");
             res.status(500).json({ error: "Failed to create order" });
         }
     },
@@ -162,7 +212,7 @@ app.get("/api/orders", async (req: Request, res: Response) => {
         });
         res.json(orders);
     } catch (error) {
-        console.error("Error fetching orders:", error);
+        logger.error({ error }, "Error fetching orders");
         res.status(500).json({ error: "Failed to fetch orders" });
     }
 });
@@ -185,7 +235,7 @@ app.get("/api/orders/:id", async (req: Request, res: Response) => {
 
         res.json(order);
     } catch (error) {
-        console.error("Error fetching order:", error);
+        logger.error({ error }, "Error fetching order");
         res.status(500).json({ error: "Failed to fetch order details" });
     }
 });
@@ -229,7 +279,7 @@ app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
             totalRevenue: revenueResult._sum.totalAmount || 0,
         });
     } catch (error) {
-        console.error("Error calculating dashboard stats:", error);
+        logger.error({ error }, "Error calculating dashboard stats");
         res.status(500).json({ error: "Failed to fetch dashboard stats" });
     }
 });
