@@ -5,6 +5,9 @@ import prisma from "./lib/prisma";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
 import { connectKafkaProducer, publishEvent } from "./lib/kafka";
+import rateLimit from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
+import { redis } from "./lib/redis";
 
 dotenv.config();
 
@@ -15,6 +18,21 @@ app.use(pinoHttp({ logger }));
 app.use(cors());
 app.use(express.json());
 
+const orderRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: new RedisStore({
+        sendCommand: (...args: string[]) =>
+            redis.call(args[0], ...args.slice(1)) as any,
+        prefix: "rl:orders:",
+    }),
+    message: {
+        error: "Too many orders placed from this IP, please try again after a minute.",
+    },
+});
+
 app.get("/health", (req: Request, res: Response) => {
     res.status(200).json({
         status: "ok",
@@ -24,10 +42,20 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 app.get("/api/products", async (req: Request, res: Response) => {
+    const CACHE_KEY = "cache:products:all";
+
     try {
+        const cachedData = await redis.get(CACHE_KEY);
+        if (cachedData) {
+            return res.json(JSON.parse(cachedData));
+        }
+
         const products = await prisma.product.findMany({
             orderBy: { createdAt: "desc" },
         });
+
+        await redis.set(CACHE_KEY, JSON.stringify(products), "EX", 60);
+        
         res.json(products);
     } catch (error) {
         console.error("Error fetching products:", error);
@@ -35,86 +63,90 @@ app.get("/api/products", async (req: Request, res: Response) => {
     }
 });
 
-app.post("/api/orders", async (req: Request, res: Response) => {
-    const { customerEmail, items } = req.body;
+app.post(
+    "/api/orders",
+    orderRateLimiter,
+    async (req: Request, res: Response) => {
+        const { customerEmail, items } = req.body;
 
-    if (
-        !customerEmail ||
-        !items ||
-        !Array.isArray(items) ||
-        items.length === 0
-    ) {
-        return res.status(400).json({
-            error: "Invalid order payload. Customer email and items are required.",
-        });
-    }
-
-    try {
-        let totalAmount = 0;
-        const orderItemsData = [];
-
-        for (const item of items) {
-            const product = await prisma.product.findUnique({
-                where: { id: item.productId },
-            });
-            if (!product) {
-                return res.status(404).json({
-                    error: `Product with ID ${item.productId} not found`,
-                });
-            }
-            if (product.stock < item.quantity) {
-                return res
-                    .status(400)
-                    .json({ error: `Not enough stock for ${product.name}` });
-            }
-            totalAmount += product.price * item.quantity;
-            orderItemsData.push({
-                productId: item.productId,
-                quantity: item.quantity,
-                price: product.price,
+        if (
+            !customerEmail ||
+            !items ||
+            !Array.isArray(items) ||
+            items.length === 0
+        ) {
+            return res.status(400).json({
+                error: "Invalid order payload. Customer email and items are required.",
             });
         }
 
-        const newOrder = await prisma.order.create({
-            data: {
-                customerEmail,
-                totalAmount,
-                status: "PENDING",
-                items: {
-                    create: orderItemsData,
-                },
-                events: {
-                    create: {
-                        status: "PENDING",
-                        message:
-                            "Order created. Event queued for Payment Worker.",
+        try {
+            let totalAmount = 0;
+            const orderItemsData = [];
+
+            for (const item of items) {
+                const product = await prisma.product.findUnique({
+                    where: { id: item.productId },
+                });
+                if (!product) {
+                    return res.status(404).json({
+                        error: `Product with ID ${item.productId} not found`,
+                    });
+                }
+                if (product.stock < item.quantity) {
+                    return res.status(400).json({
+                        error: `Not enough stock for ${product.name}`,
+                    });
+                }
+                totalAmount += product.price * item.quantity;
+                orderItemsData.push({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: product.price,
+                });
+            }
+
+            const newOrder = await prisma.order.create({
+                data: {
+                    customerEmail,
+                    totalAmount,
+                    status: "PENDING",
+                    items: {
+                        create: orderItemsData,
+                    },
+                    events: {
+                        create: {
+                            status: "PENDING",
+                            message:
+                                "Order created. Event queued for Payment Worker.",
+                        },
                     },
                 },
-            },
-            include: {
-                items: { include: { product: true } },
-                events: true,
-            },
-        });
+                include: {
+                    items: { include: { product: true } },
+                    events: true,
+                },
+            });
 
-        await publishEvent("order-created", newOrder.id, {
-            orderId: newOrder.id,
-            customerEmail: newOrder.customerEmail,
-            totalAmount: newOrder.totalAmount,
-            items: newOrder.items.map((i) => ({
-                productId: i.productId,
-                quantity: i.quantity,
-                price: i.price,
-            })),
-            createdAt: newOrder.createdAt.toISOString(),
-        });
+            await publishEvent("order-created", newOrder.id, {
+                orderId: newOrder.id,
+                customerEmail: newOrder.customerEmail,
+                totalAmount: newOrder.totalAmount,
+                items: newOrder.items.map((i) => ({
+                    productId: i.productId,
+                    quantity: i.quantity,
+                    price: i.price,
+                })),
+                createdAt: newOrder.createdAt.toISOString(),
+            });
 
-        res.status(201).json(newOrder);
-    } catch (error) {
-        console.error("Error creating order:", error);
-        res.status(500).json({ error: "Failed to create order" });
-    }
-});
+            res.status(201).json(newOrder);
+        } catch (error) {
+            console.error("Error creating order:", error);
+            res.status(500).json({ error: "Failed to create order" });
+        }
+    },
+);
 
 app.get("/api/orders", async (req: Request, res: Response) => {
     const { status } = req.query;
