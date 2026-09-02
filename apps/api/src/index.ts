@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import prisma from "./lib/prisma";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
+import { connectKafkaProducer, publishEvent } from "./lib/kafka";
 
 dotenv.config();
 
@@ -86,7 +87,7 @@ app.post("/api/orders", async (req: Request, res: Response) => {
                     create: {
                         status: "PENDING",
                         message:
-                            "Order created successfully. Waiting for payment processing.",
+                            "Order created. Event queued for Payment Worker.",
                     },
                 },
             },
@@ -96,7 +97,17 @@ app.post("/api/orders", async (req: Request, res: Response) => {
             },
         });
 
-        // TODO: orderCreated connect to kafka
+        await publishEvent("order-created", newOrder.id, {
+            orderId: newOrder.id,
+            customerEmail: newOrder.customerEmail,
+            totalAmount: newOrder.totalAmount,
+            items: newOrder.items.map((i) => ({
+                productId: i.productId,
+                quantity: i.quantity,
+                price: i.price,
+            })),
+            createdAt: newOrder.createdAt.toISOString(),
+        });
 
         res.status(201).json(newOrder);
     } catch (error) {
@@ -191,6 +202,14 @@ app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`PulseOps API running on port ${PORT}`);
+app.listen(PORT, async () => {
+    logger.info(`PulseOps API running on port ${PORT}`);
+    try {
+        await connectKafkaProducer();
+    } catch (err) {
+        logger.error(
+            { err },
+            "Could not pre-connect to Kafka Broker on startup",
+        );
+    }
 });
