@@ -116,3 +116,26 @@ run().catch((err) => {
     logger.error({ err }, "Fatal error running Payment Worker");
     process.exit(1);
 });
+
+const shutdown = async (signal: string) => {
+    logger.info({ signal }, "Graceful shutdown initiated for worker...");
+    try {
+        await consumer.disconnect();
+
+        if (typeof producer !== "undefined") {
+            await producer.disconnect();
+        }
+        logger.info("Kafka consumer/producer disconnected cleanly.");
+
+        await prisma.$disconnect();
+        logger.info("Prisma disconnected.");
+
+        process.exit(0);
+    } catch (err) {
+        logger.error({ err }, "Error during worker shutdown");
+        process.exit(1);
+    }
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
