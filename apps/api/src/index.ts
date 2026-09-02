@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import prisma from "./lib/prisma";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
-import { connectKafkaProducer, publishEvent } from "./lib/kafka";
+import { connectKafkaProducer, disconnectKafkaProducer, publishEvent } from "./lib/kafka";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { redis } from "./lib/redis";
@@ -61,7 +61,6 @@ app.get("/ready", async (req: Request, res: Response) => {
             redis: "connected",
             timestamp: new Date().toISOString(),
         });
-
     } catch (error: any) {
         logger.error({ error: error.message }, "Readiness check failed");
         res.status(503).json({
@@ -284,7 +283,7 @@ app.get("/api/dashboard/stats", async (req: Request, res: Response) => {
     }
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
     logger.info(`PulseOps API running on port ${PORT}`);
     try {
         await connectKafkaProducer();
@@ -295,3 +294,35 @@ app.listen(PORT, async () => {
         );
     }
 });
+
+const handleShutdown = async (signal: string) => {
+    logger.info({ signal }, "Graceful shutdown initiated...");
+
+    server.close(async () => {
+        logger.info("HTTP server closed to new requests.");
+
+        try {
+            await disconnectKafkaProducer();
+
+            await redis.quit();
+            logger.info("Redis connection closed.");
+
+            await prisma.$disconnect();
+            logger.info("Database connection closed.");
+
+            logger.info("PulseOps API shut down gracefully.");
+            process.exit(0);
+        } catch (err) {
+            logger.error({ err }, "Error during graceful shutdown");
+            process.exit(1);
+        }
+    });
+
+    setTimeout(() => {
+        logger.error("Forceful shutdown after timeout");
+        process.exit(1);
+    }, 10000).unref();
+};
+
+process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+process.on("SIGINT", () => handleShutdown("SIGINT"));

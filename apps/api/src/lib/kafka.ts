@@ -46,3 +46,10 @@ export const publishEvent = async (
         throw error;
     }
 };
+
+export async function disconnectKafkaProducer(): Promise<void> {
+    if (producer) {
+        await producer.disconnect();
+        logger.info("Kafka producer disconnected");
+    }
+}
