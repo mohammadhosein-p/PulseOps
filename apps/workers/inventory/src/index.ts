@@ -2,6 +2,7 @@ import { Kafka } from "kafkajs";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import pino from "pino";
+import { startHeartbeat } from "./lib/redis";
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ const kafka = new Kafka({
 
 const consumer = kafka.consumer({ groupId: "inventory-service-group" });
 const producer = kafka.producer();
+
+startHeartbeat("inventory-worker");
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

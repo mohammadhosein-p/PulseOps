@@ -2,6 +2,7 @@ import { Kafka } from "kafkajs";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import pino from "pino";
+import { startHeartbeat } from "./lib/redis";
 
 dotenv.config();
 
@@ -15,6 +16,8 @@ const kafka = new Kafka({
     clientId: "payment-worker",
     brokers: [process.env.KAFKA_BROKER || "localhost:9092"],
 });
+
+startHeartbeat("payment-worker");
 
 const consumer = kafka.consumer({ groupId: "payment-service-group" });
 const producer = kafka.producer();
