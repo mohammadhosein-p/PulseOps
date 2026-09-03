@@ -1,16 +1,20 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import prisma from "./lib/prisma";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
-import { connectKafkaProducer, disconnectKafkaProducer, publishEvent } from "./lib/kafka";
+import {
+    connectKafkaProducer,
+    disconnectKafkaProducer,
+    publishEvent,
+} from "./lib/kafka";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { redis } from "./lib/redis";
 import { register, metricsMiddleware, orderCounter } from "./lib/metrics";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,8 +22,8 @@ const PORT = process.env.PORT || 4000;
 app.use(metricsMiddleware);
 
 app.use(pinoHttp({ logger }));
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
 const orderRateLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -77,6 +81,59 @@ app.get("/metrics", async (req: Request, res: Response) => {
         res.end(await register.metrics());
     } catch (error) {
         res.status(500).end(error);
+    }
+});
+
+// Workers Status
+app.get("/api/workers/status", async (req: Request, res: Response) => {
+    try {
+        const workerDefinitions = [
+            {
+                id: "payment-worker",
+                name: "Payment Worker",
+                group: "payment-service-group",
+                topicIn: "order-created",
+                topicOut: "payment-completed",
+            },
+            {
+                id: "inventory-worker",
+                name: "Inventory Worker",
+                group: "inventory-service-group",
+                topicIn: "payment-completed",
+                topicOut: "inventory-allocated",
+            },
+            {
+                id: "notification-worker",
+                name: "Notification Worker",
+                group: "notification-service-group",
+                topicIn: "inventory-allocated",
+                topicOut: "order-completed",
+            },
+        ];
+
+        const workersStatus = await Promise.all(
+            workerDefinitions.map(async (worker) => {
+                const raw = await redis.get(`worker:heartbeat:${worker.id}`);
+                if (!raw) {
+                    return {
+                        ...worker,
+                        status: "DOWN",
+                        lastSeen: null,
+                    };
+                }
+                const data = JSON.parse(raw);
+                return {
+                    ...worker,
+                    status: "UP",
+                    lastSeen: data.timestamp,
+                };
+            }),
+        );
+
+        res.json(workersStatus);
+    } catch (error) {
+        logger.error({ err: error }, "Failed to query worker heartbeats");
+        res.status(500).json({ error: "Failed to query worker heartbeats" });
     }
 });
 
