@@ -8,6 +8,25 @@ export type OrderStatus =
     | "COMPLETED"
     | "CANCELLED";
 
+export interface Product {
+    id: string;
+    name: string;
+    description: string | null;
+    price: number;
+    stock: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrderItem {
+    id: string;
+    orderId: string;
+    productId: string;
+    quantity: number;
+    price: number;
+    product?: Product;
+}
+
 export interface OrderEvent {
     id: string;
     orderId: string;
@@ -16,26 +35,13 @@ export interface OrderEvent {
     createdAt: string;
 }
 
-export interface Product {
-    id: string;
-    name: string;
-    price: number;
-    stock: number;
-}
-
-export interface OrderItem {
-    productId: string;
-    quantity: number;
-    price: number;
-    product?: Product;
-}
-
 export interface Order {
     id: string;
     customerEmail: string;
     totalAmount: number;
     status: OrderStatus;
     createdAt: string;
+    updatedAt: string;
     items: OrderItem[];
     events: OrderEvent[];
 }
