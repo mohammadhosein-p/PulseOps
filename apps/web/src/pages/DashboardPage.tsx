@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StatsOverview } from "../components/StatsOverview";
-import { mockStats } from "../mockData";
+import { api } from "../lib/api";
+import type { DashboardStats } from "../types";
 import {
     Server,
     Database,
@@ -8,56 +9,117 @@ import {
     CheckCircle,
     Cpu,
     HardDrive,
-    Zap,
+    RefreshCw,
+    AlertCircle,
 } from "lucide-react";
 
+interface ReadinessStatus {
+    status: string;
+    database: string;
+    redis: string;
+    timestamp?: string;
+    error?: string;
+}
+
 export const DashboardPage: React.FC = () => {
+    const [stats, setStats] = useState<DashboardStats>({
+        totalOrders: 0,
+        completedOrders: 0,
+        pendingOrders: 0,
+        failedOrders: 0,
+        totalRevenue: 0,
+    });
+    const [readiness, setReadiness] = useState<ReadinessStatus | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+
+    const loadDashboardData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [statsData, readyData] = await Promise.all([
+                api.getDashboardStats(),
+                api.getReadiness().catch((err) => ({
+                    status: "not_ready",
+                    database: "disconnected",
+                    redis: "disconnected",
+                    error: err.message,
+                })),
+            ]);
+            setStats(statsData);
+            setReadiness(readyData);
+        } catch (error) {
+            console.error("Failed to load dashboard telemetry:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadDashboardData();
+    }, [loadDashboardData]);
+
     const workers = [
         {
             name: "Payment Worker",
             group: "payment-service-group",
             topicIn: "order-created",
-            status: "Healthy",
-            ping: "12ms",
+            topicOut: "payment-completed",
         },
         {
             name: "Inventory Worker",
             group: "inventory-service-group",
             topicIn: "payment-completed",
-            status: "Healthy",
-            ping: "15ms",
+            topicOut: "inventory-allocated",
         },
         {
             name: "Notification Worker",
             group: "notification-service-group",
             topicIn: "inventory-allocated",
-            status: "Healthy",
-            ping: "9ms",
+            topicOut: "order-completed",
         },
     ];
 
     return (
         <div className="w-full space-y-8">
-            {/* ردیف آمار تجمیعی */}
-            <StatsOverview stats={mockStats} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Cpu className="h-5 w-5 text-indigo-400" />
+                        SRE Telemetry & Cluster Health
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                        Aggregated system metrics from PostgreSQL OLTP and
+                        infrastructure probes
+                    </p>
+                </div>
 
-            {/* وضعیت زیرساخت توزیع‌شده و ورکرها */}
+                <button
+                    onClick={loadDashboardData}
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition cursor-pointer text-xs font-mono w-fit"
+                >
+                    <RefreshCw
+                        className={`h-3.5 w-3.5 ${loading ? "animate-spin text-indigo-400" : ""}`}
+                    />
+                    <span>Refresh Telemetry</span>
+                </button>
+            </div>
+
+            <StatsOverview stats={stats} />
+
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                {/* وضعیت ورکرها */}
                 <div className="xl:col-span-8 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                         <div>
                             <h3 className="text-base font-bold text-white flex items-center gap-2">
                                 <Cpu className="h-4 w-4 text-indigo-400" />
-                                Micro-Workers Mesh Status
+                                Kafka Event Stream Consumers
                             </h3>
                             <p className="text-xs text-slate-400 mt-0.5">
-                                Consumer groups currently active in Kafka
-                                partition loop
+                                Consumer groups orchestrating the asynchronous
+                                order saga
                             </p>
                         </div>
-                        <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-                            3/3 Workers Active
+                        <span className="text-xs font-mono text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">
+                            Choreography Mesh
                         </span>
                     </div>
 
@@ -65,7 +127,7 @@ export const DashboardPage: React.FC = () => {
                         {workers.map((w, idx) => (
                             <div
                                 key={idx}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 gap-3"
+                                className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 gap-3"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -76,31 +138,31 @@ export const DashboardPage: React.FC = () => {
                                             {w.name}
                                         </h4>
                                         <span className="text-xs font-mono text-slate-500">
-                                            Group: {w.group}
+                                            Group ID: {w.group}
                                         </span>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 text-xs font-mono">
-                                    <div className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                                        Inbound:{" "}
-                                        <span className="text-indigo-400">
+                                <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                                        Sub:{" "}
+                                        <strong className="text-indigo-300">
                                             {w.topicIn}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-emerald-400">
-                                        <CheckCircle className="h-4 w-4" />
-                                        <span>
-                                            {w.status} ({w.ping})
-                                        </span>
-                                    </div>
+                                        </strong>
+                                    </span>
+                                    <span className="text-slate-600">→</span>
+                                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                                        Pub:{" "}
+                                        <strong className="text-cyan-300">
+                                            {w.topicOut}
+                                        </strong>
+                                    </span>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* اتصالات سیستم ذخیره‌سازی و بروکر */}
                 <div className="xl:col-span-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
                     <div className="pb-3 border-b border-slate-800">
                         <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -108,53 +170,72 @@ export const DashboardPage: React.FC = () => {
                             Core Infrastructure Probes
                         </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
-                            Readiness status of system dependencies
+                            Live status from Express /ready endpoint
                         </p>
                     </div>
 
                     <div className="space-y-3 font-mono text-xs">
                         <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
-                                <Radio className="h-4 w-4 text-indigo-400" />
-                                <span className="text-slate-300">
-                                    Apache Kafka Cluster
-                                </span>
-                            </div>
-                            <span className="text-emerald-400">
-                                Online (3 Nodes)
-                            </span>
-                        </div>
-
-                        <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
                                 <Database className="h-4 w-4 text-cyan-400" />
                                 <span className="text-slate-300">
-                                    PostgreSQL (Primary OLTP)
+                                    PostgreSQL OLTP
                                 </span>
                             </div>
-                            <span className="text-emerald-400">
-                                Read / Write OK
-                            </span>
+                            {readiness?.database === "connected" ? (
+                                <span className="text-emerald-400 flex items-center gap-1">
+                                    <CheckCircle className="h-3.5 w-3.5" />{" "}
+                                    Connected
+                                </span>
+                            ) : (
+                                <span className="text-rose-400 flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" />{" "}
+                                    Disconnected
+                                </span>
+                            )}
                         </div>
 
                         <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
-                                <Zap className="h-4 w-4 text-amber-400" />
+                                <Server className="h-4 w-4 text-amber-400" />
                                 <span className="text-slate-300">
-                                    Redis In-Memory
+                                    Redis Cache & Rate Limit
                                 </span>
                             </div>
-                            <span className="text-emerald-400">
-                                PONG (Rate Limit Active)
+                            {readiness?.redis === "connected" ? (
+                                <span className="text-emerald-400 flex items-center gap-1">
+                                    <CheckCircle className="h-3.5 w-3.5" /> PONG
+                                </span>
+                            ) : (
+                                <span className="text-rose-400 flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" />{" "}
+                                    Unreachable
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <Radio className="h-4 w-4 text-indigo-400" />
+                                <span className="text-slate-300">
+                                    Apache Kafka Producer
+                                </span>
+                            </div>
+                            <span className="text-emerald-400 flex items-center gap-1">
+                                <CheckCircle className="h-3.5 w-3.5" /> Ready
                             </span>
                         </div>
                     </div>
 
                     <div className="p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-[11px] text-slate-400">
-                        All endpoints are instrumented with Prometheus{" "}
-                        <code className="text-indigo-300">/metrics</code> and
-                        Kubernetes{" "}
-                        <code className="text-indigo-300">/ready</code> probes.
+                        Probe timestamp:{" "}
+                        <span className="font-mono text-slate-200">
+                            {readiness?.timestamp
+                                ? new Date(
+                                      readiness.timestamp,
+                                  ).toLocaleTimeString()
+                                : "Awaiting sync..."}
+                        </span>
                     </div>
                 </div>
             </div>

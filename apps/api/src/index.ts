@@ -1,16 +1,20 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import prisma from "./lib/prisma";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
-import { connectKafkaProducer, disconnectKafkaProducer, publishEvent } from "./lib/kafka";
+import {
+    connectKafkaProducer,
+    disconnectKafkaProducer,
+    publishEvent,
+} from "./lib/kafka";
 import rateLimit from "express-rate-limit";
 import RedisStore from "rate-limit-redis";
 import { redis } from "./lib/redis";
 import { register, metricsMiddleware, orderCounter } from "./lib/metrics";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,8 +22,8 @@ const PORT = process.env.PORT || 4000;
 app.use(metricsMiddleware);
 
 app.use(pinoHttp({ logger }));
-app.use(cors());
 app.use(express.json());
+app.use(cors());
 
 const orderRateLimiter = rateLimit({
     windowMs: 60 * 1000,
