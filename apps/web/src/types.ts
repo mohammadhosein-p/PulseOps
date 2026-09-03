@@ -53,3 +53,13 @@ export interface DashboardStats {
     failedOrders: number;
     totalRevenue: number;
 }
+
+export interface WorkerTelemetry {
+    id: string;
+    name: string;
+    group: string;
+    topicIn: string;
+    topicOut: string;
+    status: "UP" | "DOWN";
+    lastSeen: string | null;
+}

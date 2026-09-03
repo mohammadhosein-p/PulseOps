@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Product, Order, DashboardStats } from "../types";
+import type { Product, Order, DashboardStats, WorkerTelemetry } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -51,6 +51,13 @@ export const api = {
 
     getReadiness: async () => {
         const response = await apiClient.get("/ready");
+        return response.data;
+    },
+
+    getWorkersStatus: async (): Promise<WorkerTelemetry[]> => {
+        const response = await apiClient.get<WorkerTelemetry[]>(
+            "/api/workers/status",
+        );
         return response.data;
     },
 };

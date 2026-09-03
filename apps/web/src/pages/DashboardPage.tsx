@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { StatsOverview } from "../components/StatsOverview";
 import { api } from "../lib/api";
-import type { DashboardStats } from "../types";
+import type { DashboardStats, WorkerTelemetry } from "../types";
 import {
     Server,
     Database,
@@ -31,11 +31,12 @@ export const DashboardPage: React.FC = () => {
     });
     const [readiness, setReadiness] = useState<ReadinessStatus | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
+    const [workers, setWorkers] = useState<WorkerTelemetry[]>([]);
 
     const loadDashboardData = useCallback(async () => {
         setLoading(true);
         try {
-            const [statsData, readyData] = await Promise.all([
+            const [statsData, readyData, workersData] = await Promise.all([
                 api.getDashboardStats(),
                 api.getReadiness().catch((err) => ({
                     status: "not_ready",
@@ -43,9 +44,11 @@ export const DashboardPage: React.FC = () => {
                     redis: "disconnected",
                     error: err.message,
                 })),
+                api.getWorkersStatus().catch(() => []),
             ]);
             setStats(statsData);
             setReadiness(readyData);
+            setWorkers(workersData);
         } catch (error) {
             console.error("Failed to load dashboard telemetry:", error);
         } finally {
@@ -57,26 +60,6 @@ export const DashboardPage: React.FC = () => {
         loadDashboardData();
     }, [loadDashboardData]);
 
-    const workers = [
-        {
-            name: "Payment Worker",
-            group: "payment-service-group",
-            topicIn: "order-created",
-            topicOut: "payment-completed",
-        },
-        {
-            name: "Inventory Worker",
-            group: "inventory-service-group",
-            topicIn: "payment-completed",
-            topicOut: "inventory-allocated",
-        },
-        {
-            name: "Notification Worker",
-            group: "notification-service-group",
-            topicIn: "inventory-allocated",
-            topicOut: "order-completed",
-        },
-    ];
 
     return (
         <div className="w-full space-y-8">
@@ -124,42 +107,77 @@ export const DashboardPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-3">
-                        {workers.map((w, idx) => (
-                            <div
-                                key={idx}
-                                className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 gap-3"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                                        <Server className="h-4 w-4" />
+                        {workers.map((w) => {
+                            const isAlive = w.status === "UP";
+                            return (
+                                <div
+                                    key={w.id}
+                                    className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border transition-all gap-3 ${
+                                        isAlive
+                                            ? "bg-slate-950/60 border-slate-800/80"
+                                            : "bg-rose-950/20 border-rose-900/40"
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className={`h-8 w-8 rounded-lg flex items-center justify-center border ${
+                                                isAlive
+                                                    ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                                                    : "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                                            }`}
+                                        >
+                                            <Server className="h-4 w-4" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-slate-200">
+                                                {w.name}
+                                            </h4>
+                                            <span className="text-xs font-mono text-slate-500">
+                                                Group ID: {w.group}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-slate-200">
-                                            {w.name}
-                                        </h4>
-                                        <span className="text-xs font-mono text-slate-500">
-                                            Group ID: {w.group}
-                                        </span>
-                                    </div>
-                                </div>
 
-                                <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-                                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
-                                        Sub:{" "}
-                                        <strong className="text-indigo-300">
-                                            {w.topicIn}
-                                        </strong>
-                                    </span>
-                                    <span className="text-slate-600">→</span>
-                                    <span className="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
-                                        Pub:{" "}
-                                        <strong className="text-cyan-300">
-                                            {w.topicOut}
-                                        </strong>
-                                    </span>
+                                    <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-slate-400">
+                                                Mesh:
+                                            </span>
+                                            <span className="text-indigo-400">
+                                                {w.topicIn}
+                                            </span>
+                                            <span className="text-slate-600">
+                                                →
+                                            </span>
+                                            <span className="text-cyan-400">
+                                                {w.topicOut}
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border ${
+                                                isAlive
+                                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                                    : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                            }`}
+                                        >
+                                            <span
+                                                className={`h-2 w-2 rounded-full ${
+                                                    isAlive
+                                                        ? "bg-emerald-400 animate-pulse"
+                                                        : "bg-rose-500"
+                                                }`}
+                                            />
+                                            <span>
+                                                {isAlive
+                                                    ? "Active (Heartbeat OK)"
+                                                    : "Offline (No Signal)"}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 

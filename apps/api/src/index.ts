@@ -84,6 +84,59 @@ app.get("/metrics", async (req: Request, res: Response) => {
     }
 });
 
+// Workers Status
+app.get("/api/workers/status", async (req: Request, res: Response) => {
+    try {
+        const workerDefinitions = [
+            {
+                id: "payment-worker",
+                name: "Payment Worker",
+                group: "payment-service-group",
+                topicIn: "order-created",
+                topicOut: "payment-completed",
+            },
+            {
+                id: "inventory-worker",
+                name: "Inventory Worker",
+                group: "inventory-service-group",
+                topicIn: "payment-completed",
+                topicOut: "inventory-allocated",
+            },
+            {
+                id: "notification-worker",
+                name: "Notification Worker",
+                group: "notification-service-group",
+                topicIn: "inventory-allocated",
+                topicOut: "order-completed",
+            },
+        ];
+
+        const workersStatus = await Promise.all(
+            workerDefinitions.map(async (worker) => {
+                const raw = await redis.get(`worker:heartbeat:${worker.id}`);
+                if (!raw) {
+                    return {
+                        ...worker,
+                        status: "DOWN",
+                        lastSeen: null,
+                    };
+                }
+                const data = JSON.parse(raw);
+                return {
+                    ...worker,
+                    status: "UP",
+                    lastSeen: data.timestamp,
+                };
+            }),
+        );
+
+        res.json(workersStatus);
+    } catch (error) {
+        logger.error({ err: error }, "Failed to query worker heartbeats");
+        res.status(500).json({ error: "Failed to query worker heartbeats" });
+    }
+});
+
 // ==========================================
 // Business Endpoints
 // ==========================================
