@@ -36,7 +36,7 @@ function buildNotification(
     extraData: any,
 ): NotificationTemplate {
     switch (topic) {
-        case "inventory-allocated":
+        case "payment-completed":
             return {
                 subject: "سفارش شما با موفقیت تکمیل شد",
                 body: `سلام، سفارش شما به شماره ${orderId} با موفقیت تایید و پردازش شد. اقلام در صف ارسال قرار گرفتند.`,
@@ -79,7 +79,7 @@ async function run() {
 
     await consumer.subscribe({
         topics: [
-            "inventory-allocated",
+            "payment-completed",
             "payment-failed",
             "inventory-failed",
             "order-cancelled",
@@ -125,7 +125,7 @@ async function run() {
                 );
 
                 // order completion
-                if (topic === "inventory-allocated") {
+                if (topic === "payment-completed") {
                     await prisma.order.update({
                         where: { id: orderId },
                         data: {
