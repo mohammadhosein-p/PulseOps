@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  web:
+    image: ghcr.io/mohammadhosein-p/pulseops-web:${IMAGE_TAG:-latest}
+    container_name: pulseops-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - pulseops-net
+  api:
+    image: ghcr.io/mohammadhosein-p/pulseops-api:${IMAGE_TAG:-latest}
+    container_name: pulseops-api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://pulseops:password@postgres:5432/pulseops_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKER=kafka:9092
+    networks:
+      - pulseops-net
+
+  payment-worker:
+    image: ghcr.io/mohammadhosein-p/pulseops-payment-worker:${IMAGE_TAG:-latest}
+    container_name: pulseops-payment-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://pulseops:password@postgres:5432/pulseops_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKER=kafka:9092
+      - PROCESSING_DELAY_MS=1500
+    networks:
+      - pulseops-net
+
+  inventory-worker:
+    image: ghcr.io/mohammadhosein-p/pulseops-inventory-worker:${IMAGE_TAG:-latest}
+    container_name: pulseops-inventory-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://pulseops:password@postgres:5432/pulseops_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKER=kafka:9092
+      - PROCESSING_DELAY_MS=1000
+    networks:
+      - pulseops-net
+
+  notification-worker:
+    image: ghcr.io/mohammadhosein-p/pulseops-notification-worker:${IMAGE_TAG:-latest}
+    container_name: pulseops-notification-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://pulseops:password@postgres:5432/pulseops_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKER=kafka:9092
+    networks:
+      - pulseops-net
+
+networks:
+  pulseops-net:
+    external: true
