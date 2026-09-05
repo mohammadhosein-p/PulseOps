@@ -89,24 +89,24 @@ app.get("/api/workers/status", async (req: Request, res: Response) => {
     try {
         const workerDefinitions = [
             {
-                id: "payment-worker",
-                name: "Payment Worker",
-                group: "payment-service-group",
-                topicIn: "order-created",
-                topicOut: "payment-completed",
-            },
-            {
                 id: "inventory-worker",
                 name: "Inventory Worker",
                 group: "inventory-service-group",
-                topicIn: "payment-completed",
+                topicIn: "order-created",
                 topicOut: "inventory-allocated",
+            },
+            {
+                id: "payment-worker",
+                name: "Payment Worker",
+                group: "payment-service-group",
+                topicIn: "inventory-allocated",
+                topicOut: "payment-completed",
             },
             {
                 id: "notification-worker",
                 name: "Notification Worker",
                 group: "notification-service-group",
-                topicIn: "inventory-allocated",
+                topicIn: "payment-completed",
                 topicOut: "order-completed",
             },
         ];
@@ -221,7 +221,7 @@ app.post(
                         create: {
                             status: "PENDING",
                             message:
-                                "Order created. Event queued for Payment Worker.",
+                                "Order created. Event queued for Inventory Worker.",
                         },
                     },
                 },
