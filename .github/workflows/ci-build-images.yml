@@ -26,6 +26,15 @@ jobs:
           - name: api
             context: apps/api
             image_name: api
+          - name: payment-worker
+            context: apps/workers/payment
+            image_name: payment-worker
+          - name: inventory-worker
+            context: apps/workers/inventory
+            image_name: inventory-worker
+          - name: notification-worker
+            context: apps/workers/notification
+            image_name: notification-worker
 
     steps:
       - name: Checkout Code
