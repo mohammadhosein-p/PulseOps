@@ -102,7 +102,7 @@ export const StorefrontPage: React.FC = () => {
                 </div>
             )}
 
-            <section className="w-full rounded-2xl bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-900/60 border border-slate-800 p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <section className="w-full rounded-2xl bg-linear-to-r from-indigo-950/40 via-slate-900 to-slate-900/60 border border-slate-800 p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="space-y-2 max-w-2xl">
                     <div className="flex items-center gap-2 text-xs font-mono text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md w-fit border border-indigo-500/20">
                         <Zap className="h-3.5 w-3.5" /> High-Throughput Event
@@ -174,7 +174,7 @@ export const StorefrontPage: React.FC = () => {
                                             </span>
                                         </div>
 
-                                        <p className="text-xs text-slate-400 leading-relaxed min-h-[48px]">
+                                        <p className="text-xs text-slate-400 leading-relaxed min-h-12">
                                             {product.description ||
                                                 "Enterprise grade infrastructure tooling component."}
                                         </p>

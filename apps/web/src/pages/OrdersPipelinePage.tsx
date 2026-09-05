@@ -154,7 +154,7 @@ export const OrdersPipelinePage: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    <div className="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3 max-h-[800px] overflow-y-auto">
+                    <div className="lg:col-span-5 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3 max-h-200 overflow-y-auto">
                         <span className="text-xs font-mono text-slate-400 px-2 block">
                             Active Traces ({orders.length} orders recorded)
                         </span>
