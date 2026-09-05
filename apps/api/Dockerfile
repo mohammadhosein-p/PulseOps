@@ -1,24 +1,21 @@
-FROM node:24 AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
-
 RUN apk add --no-cache libc6-compat
 
 COPY package*.json ./
 COPY prisma ./prisma/
 
 RUN npm ci
-
 RUN npx prisma generate
 
 COPY tsconfig.json ./
 COPY src ./src
 
 RUN npm run build
-
 RUN npm prune --omit=dev
 
-FROM node:24 AS runner
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
