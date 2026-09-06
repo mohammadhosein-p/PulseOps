@@ -29,10 +29,13 @@ async function run() {
     await producer.connect();
     logger.info("Payment Worker successfully connected to Kafka");
 
-    await consumer.subscribe({ topic: "order-created", fromBeginning: false });
+    await consumer.subscribe({
+        topic: "inventory-allocated",
+        fromBeginning: false,
+    });
 
     await consumer.run({
-        eachMessage: async ({ topic, partition, message }) => {
+        eachMessage: async ({ partition, message }) => {
             if (!message.value) return;
 
             const orderData = JSON.parse(message.value.toString());
@@ -44,11 +47,17 @@ async function run() {
             );
 
             try {
-                // payment delay simulation
                 const delay = Number(process.env.PROCESSING_DELAY_MS) || 1500;
                 await sleep(delay);
 
-                // order status update
+                const isDeclined = Number(orderData.totalAmount) > 10000;
+
+                if (isDeclined) {
+                    throw new Error(
+                        "Payment gateway declined: Exceeded maximum transaction limit.",
+                    );
+                }
+
                 await prisma.order.update({
                     where: { id: orderId },
                     data: {
@@ -62,7 +71,6 @@ async function run() {
                     },
                 });
 
-                // pass to Inventory Worker by calling event
                 await producer.send({
                     topic: "payment-completed",
                     messages: [
@@ -71,6 +79,7 @@ async function run() {
                             value: JSON.stringify({
                                 orderId,
                                 items: orderData.items,
+                                customerEmail: orderData.customerEmail,
                                 timestamp: new Date().toISOString(),
                             }),
                         },
@@ -81,8 +90,11 @@ async function run() {
                     { orderId },
                     "Payment processed and published to payment-completed",
                 );
-            } catch (error) {
-                logger.error({ error, orderId }, "Failed to process payment");
+            } catch (error: any) {
+                logger.error(
+                    { error: error.message, orderId },
+                    "Failed to process payment",
+                );
 
                 await prisma.order.update({
                     where: { id: orderId },
@@ -91,7 +103,9 @@ async function run() {
                         events: {
                             create: {
                                 status: "PAYMENT_FAILED",
-                                message: "Payment gateway transaction failed.",
+                                message:
+                                    error.message ||
+                                    "Payment gateway transaction failed.",
                             },
                         },
                     },
@@ -104,7 +118,10 @@ async function run() {
                             key: orderId,
                             value: JSON.stringify({
                                 orderId,
-                                reason: "Order failed, payment gateway failed or time exceeded",
+                                items: orderData.items,
+                                reason:
+                                    error.message ||
+                                    "Payment gateway transaction failed.",
                                 timestamp: new Date().toISOString(),
                             }),
                         },
@@ -121,18 +138,15 @@ run().catch((err) => {
 });
 
 const shutdown = async (signal: string) => {
-    logger.info({ signal }, "Graceful shutdown initiated for worker...");
+    logger.info(
+        { signal },
+        "Graceful shutdown initiated for Payment Worker...",
+    );
     try {
         await consumer.disconnect();
-
-        if (typeof producer !== "undefined") {
-            await producer.disconnect();
-        }
-        logger.info("Kafka consumer/producer disconnected cleanly.");
-
+        await producer.disconnect();
         await prisma.$disconnect();
-        logger.info("Prisma disconnected.");
-
+        logger.info("Payment Worker connections closed cleanly.");
         process.exit(0);
     } catch (err) {
         logger.error({ err }, "Error during worker shutdown");
