@@ -8,7 +8,7 @@ api:
   replicaCount: 1
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-api
-    tag: "latest"
+    tag: sha-8be4dbe
     pullPolicy: Always
   service:
     type: ClusterIP
@@ -31,7 +31,7 @@ web:
   replicaCount: 1
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-web
-    tag: "latest"
+    tag: sha-8be4dbe
     pullPolicy: Always
   service:
     type: NodePort
@@ -56,7 +56,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-payment-worker
-      tag: "latest"
+      tag: sha-8be4dbe
     processingDelayMs: 1500
     resources:
       limits:
@@ -70,7 +70,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-inventory-worker
-      tag: "latest"
+      tag: sha-8be4dbe
     processingDelayMs: 1000
     resources:
       limits:
@@ -84,7 +84,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-notification-worker
-      tag: "latest"
+      tag: sha-8be4dbe
     resources:
       limits:
         cpu: 200m
@@ -93,6 +93,7 @@ workers:
         cpu: 50m
         memory: 128Mi
 
+# TODO: host volume mode 1001:1001
 postgresql:
   enabled: true
   image:
@@ -111,6 +112,7 @@ postgresql:
     persistence:
       size: 1Gi
 
+# TODO: host volume mode 1001:1001
 redis:
   enabled: true
   architecture: standalone
@@ -128,6 +130,7 @@ redis:
     persistence:
       size: 1Gi
 
+# TODO: host volume mode 1001:1001
 kafka:
   enabled: false
   image:
