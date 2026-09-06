@@ -40,7 +40,11 @@ spec:
             - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
               value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-              value: "1@127.0.0.1:9093"
+              value: "1@localhost:9093"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
             - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
               value: "1"
             - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
@@ -51,10 +55,12 @@ spec:
               value: "/tmp/kraft-combined-logs"
             - name: CLUSTER_ID
               value: "5L6g3nShT-eMCtK--X86sw"
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xms384m -Xmx512m"
           resources:
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 800m
+              memory: 1Gi
             requests:
-              cpu: 150m
-              memory: 256Mi
+              cpu: 250m
+              memory: 512Mi
