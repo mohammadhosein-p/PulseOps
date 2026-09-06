@@ -22,4 +22,11 @@ spec:
                 name: {{ .Release.Name }}-api
                 port:
                   number: {{ .Values.api.service.port }}
+          - path: /ready
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-api
+                port:
+                  number: {{ .Values.api.service.port }}
 {{- end }}
