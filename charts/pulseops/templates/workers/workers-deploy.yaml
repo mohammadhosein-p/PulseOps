@@ -15,8 +15,6 @@ spec:
       labels:
         app: {{ $workerName }}-worker
     spec:
-      imagePullSecrets:
-        {{- toYaml $.Values.global.imagePullSecrets | nindent 8 }}
       containers:
         - name: worker
           image: "{{ $workerConfig.image.repository }}:{{ $workerConfig.image.tag }}"

@@ -1,8 +1,8 @@
-global:
-  imageRegistry: ghcr.io
-  imageOwner: mohammadhosein-p
-  imagePullSecrets:
-    - name: ghcr-secret
+# global:
+#   imageRegistry: ghcr.io
+#   imageOwner: mohammadhosein-p
+#   imagePullSecrets:
+#     - name: ghcr-secret
 
 api:
   replicaCount: 1
@@ -95,6 +95,9 @@ workers:
 
 postgresql:
   enabled: true
+  image:
+    repository: bitnami/postgresql
+    tag: latest
   auth:
     username: pulseops
     password: password
@@ -110,6 +113,10 @@ postgresql:
 
 redis:
   enabled: true
+  architecture: standalone
+  image:
+    repository: bitnami/redis
+    tag: latest
   auth:
     enabled: false
   master:
@@ -123,6 +130,9 @@ redis:
 
 kafka:
   enabled: true
+  image:
+    repository: apache/kafka
+    tag: 3.8.1
   kraft:
     enabled: true
   zookeeper:
@@ -140,3 +150,8 @@ kafka:
     heapOpts: "-Xmx384m -Xms384m"
     persistence:
       size: 2Gi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: ""
