@@ -129,7 +129,7 @@ redis:
       size: 1Gi
 
 kafka:
-  enabled: true
+  enabled: false
   image:
     repository: apache/kafka
     tag: 3.8.1
