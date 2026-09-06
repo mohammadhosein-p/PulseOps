@@ -2,7 +2,7 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache openssl libc6-compat
 
 COPY package*.json ./
 RUN npm ci
@@ -16,6 +16,8 @@ RUN npm prune --omit=dev
 FROM node:24-alpine AS runner
 
 WORKDIR /app
+
+RUN apk add --no-cache openssl libc6-compat
 
 ENV NODE_ENV=production
 
