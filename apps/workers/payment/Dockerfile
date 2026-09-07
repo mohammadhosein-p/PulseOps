@@ -30,4 +30,6 @@ COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/prisma ./prisma
 
+EXPOSE 9102
+
 CMD ["node", "dist/index.js"]
