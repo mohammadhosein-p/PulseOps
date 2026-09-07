@@ -4,13 +4,23 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
-- name: Install K3s server
-  ansible.builtin.shell: |
-    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
-      --disable=traefik \
-      --write-kubeconfig-mode=644 \
-      --tls-san={{ ansible_host }}" sh -
+- name: Download K3s installation script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s_install.sh
+    mode: '0700'
   when: not k3s_binary.stat.exists
+
+- name: Execute K3s installation script
+  ansible.builtin.command: /tmp/k3s_install.sh
+  environment:
+    INSTALL_K3S_EXEC: >-
+      server
+      --disable=traefik
+      --write-kubeconfig-mode=644
+      --tls-san={{ ansible_host }}
+  when: not k3s_binary.stat.exists
+  changed_when: true
 
 - name: Fetch kubeconfig to local machine
   ansible.builtin.fetch:

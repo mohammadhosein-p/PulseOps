@@ -1,9 +1,20 @@
 ---
-- name: Install Helm CLI
-  ansible.builtin.shell: |
-    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-  args:
-    creates: /usr/local/bin/helm
+- name: Check if Helm is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/helm
+  register: helm_binary
+
+- name: Download Helm installation script
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: '0700'
+  when: not helm_binary.stat.exists
+
+- name: Execute Helm installation script
+  ansible.builtin.command: /tmp/get_helm.sh
+  when: not helm_binary.stat.exists
+  changed_when: true
 
 - name: Add Helm repositories
   kubernetes.core.helm_repository:
