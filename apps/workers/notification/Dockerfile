@@ -24,4 +24,6 @@ COPY --chown=node:node --from=builder /app/package*.json ./
 COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 
+EXPOSE 9102
+
 CMD ["node", "dist/index.js"]

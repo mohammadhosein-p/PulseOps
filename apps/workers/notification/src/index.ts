@@ -3,23 +3,34 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import pino from "pino";
 import { startHeartbeat } from "./lib/redis";
+import {
+    startMetricsServer,
+    workerProcessedTotal,
+    workerProcessingDuration,
+    workerErrorsTotal,
+} from "./lib/metrics";
 
 dotenv.config();
 
+const WORKER_NAME = "notification-worker";
+const METRICS_PORT = Number(process.env.METRICS_PORT) || 9102;
+
 const logger = pino({
     transport: { target: "pino-pretty" },
-    base: { service: "notification-worker" },
+    base: { service: WORKER_NAME },
 });
 
 const prisma = new PrismaClient();
 const kafka = new Kafka({
-    clientId: "notification-worker",
+    clientId: WORKER_NAME,
     brokers: [process.env.KAFKA_BROKER || "localhost:9092"],
 });
 
 const consumer = kafka.consumer({ groupId: "notification-service-group" });
 
-startHeartbeat("notification-worker");
+startHeartbeat(WORKER_NAME);
+
+const metricsServer = startMetricsServer(WORKER_NAME, METRICS_PORT);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -91,6 +102,11 @@ async function run() {
         eachMessage: async ({ topic, partition, message }) => {
             if (!message.value) return;
 
+            const stopTimer = workerProcessingDuration.startTimer({
+                worker: WORKER_NAME,
+                topic,
+            });
+
             const payload = JSON.parse(message.value.toString());
             const { orderId } = payload;
 
@@ -139,11 +155,30 @@ async function run() {
                         },
                     });
                 }
+
+                workerProcessedTotal.inc({
+                    worker: WORKER_NAME,
+                    topic,
+                    status: "success",
+                });
             } catch (error: any) {
+                workerErrorsTotal.inc({
+                    worker: WORKER_NAME,
+                    topic,
+                    error_type: "notification_dispatch_failed",
+                });
+                workerProcessedTotal.inc({
+                    worker: WORKER_NAME,
+                    topic,
+                    status: "failed",
+                });
+
                 logger.error(
                     { error: error.message, orderId, topic },
                     "Failed to dispatch notification",
                 );
+            } finally {
+                stopTimer();
             }
         },
     });
@@ -157,8 +192,9 @@ run().catch((err) => {
 const shutdown = async (signal: string) => {
     logger.info({ signal }, "Graceful shutdown initiated for worker...");
     try {
-        await consumer.disconnect();
+        metricsServer.close();
 
+        await consumer.disconnect();
         logger.info("Kafka consumer disconnected cleanly.");
 
         await prisma.$disconnect();

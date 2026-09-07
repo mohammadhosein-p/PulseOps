@@ -3,21 +3,32 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import pino from "pino";
 import { startHeartbeat } from "./lib/redis";
+import {
+    startMetricsServer,
+    workerProcessedTotal,
+    workerProcessingDuration,
+    workerErrorsTotal,
+} from "./lib/metrics";
 
 dotenv.config();
 
+const WORKER_NAME = "payment-worker";
+const METRICS_PORT = Number(process.env.METRICS_PORT) || 9102;
+
 const logger = pino({
     transport: { target: "pino-pretty" },
-    base: { service: "payment-worker" },
+    base: { service: WORKER_NAME },
 });
 
 const prisma = new PrismaClient();
 const kafka = new Kafka({
-    clientId: "payment-worker",
+    clientId: WORKER_NAME,
     brokers: [process.env.KAFKA_BROKER || "localhost:9092"],
 });
 
-startHeartbeat("payment-worker");
+startHeartbeat(WORKER_NAME);
+
+const metricsServer = startMetricsServer(WORKER_NAME, METRICS_PORT);
 
 const consumer = kafka.consumer({ groupId: "payment-service-group" });
 const producer = kafka.producer();
@@ -35,8 +46,13 @@ async function run() {
     });
 
     await consumer.run({
-        eachMessage: async ({ partition, message }) => {
+        eachMessage: async ({ topic, partition, message }) => {
             if (!message.value) return;
+
+            const stopTimer = workerProcessingDuration.startTimer({
+                worker: WORKER_NAME,
+                topic,
+            });
 
             const orderData = JSON.parse(message.value.toString());
             const orderId = orderData.orderId;
@@ -86,11 +102,35 @@ async function run() {
                     ],
                 });
 
+                workerProcessedTotal.inc({
+                    worker: WORKER_NAME,
+                    topic,
+                    status: "success",
+                });
+
                 logger.info(
                     { orderId },
                     "Payment processed and published to payment-completed",
                 );
             } catch (error: any) {
+                const isLimitError = error.message?.includes(
+                    "Exceeded maximum transaction limit",
+                );
+                const errorType = isLimitError
+                    ? "declined_limit_exceeded"
+                    : "payment_gateway_error";
+
+                workerErrorsTotal.inc({
+                    worker: WORKER_NAME,
+                    topic,
+                    error_type: errorType,
+                });
+                workerProcessedTotal.inc({
+                    worker: WORKER_NAME,
+                    topic,
+                    status: "failed",
+                });
+
                 logger.error(
                     { error: error.message, orderId },
                     "Failed to process payment",
@@ -127,6 +167,8 @@ async function run() {
                         },
                     ],
                 });
+            } finally {
+                stopTimer();
             }
         },
     });
@@ -143,6 +185,7 @@ const shutdown = async (signal: string) => {
         "Graceful shutdown initiated for Payment Worker...",
     );
     try {
+        metricsServer.close();
         await consumer.disconnect();
         await producer.disconnect();
         await prisma.$disconnect();
