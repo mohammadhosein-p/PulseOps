@@ -1,0 +1,62 @@
+---
+- name: Install Helm CLI
+  ansible.builtin.shell: |
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Add Helm repositories
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+  loop:
+    - { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' }
+    - { name: 'kedacore', url: 'https://kedacore.github.io/charts' }
+    - { name: 'argo', url: 'https://argoproj.github.io/argo-helm' }
+
+- name: Deploy NGINX Ingress Controller
+  kubernetes.core.helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    release_namespace: ingress-nginx
+    create_namespace: true
+    state: present
+    wait: true
+
+- name: Deploy KEDA Operator
+  kubernetes.core.helm:
+    name: keda
+    chart_ref: kedacore/keda
+    release_namespace: keda
+    create_namespace: true
+    state: present
+    wait: true
+
+- name: Deploy ArgoCD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: argocd
+    create_namespace: true
+    state: present
+    wait: true
+    values:
+      server:
+        extraArgs:
+          - --insecure
+
+- name: Read ArgoCD initial admin password
+  kubernetes.core.k8s_info:
+    kind: Secret
+    namespace: argocd
+    name: argocd-initial-admin-secret
+  register: argocd_admin_secret
+
+- name: Print ArgoCD credentials
+  ansible.builtin.debug:
+    msg:
+      - "=========================================================="
+      - "ArgoCD URL: Access via port-forward or server IP"
+      - "Username: admin"
+      - "Password: {{ argocd_admin_secret.resources[0].data.password | b64decode }}"
+      - "=========================================================="

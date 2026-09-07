@@ -1,0 +1,27 @@
+---
+- name: Check if K3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install K3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
+      --disable=traefik \
+      --write-kubeconfig-mode=644 \
+      --tls-san={{ ansible_host }}" sh -
+  when: not k3s_binary.stat.exists
+
+- name: Fetch kubeconfig to local machine
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ playbook_dir }}/../kubeconfig/config"
+    flat: true
+
+- name: Set remote server IP in local kubeconfig
+  ansible.builtin.replace:
+    path: "{{ playbook_dir }}/../kubeconfig/config"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ ansible_host }}:6443"
+  delegate_to: localhost
+  become: false

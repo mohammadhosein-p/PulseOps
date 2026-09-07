@@ -1,0 +1,36 @@
+---
+- name: Install essential tools and python kubernetes libraries
+  ansible.builtin.apt:
+    name:
+      - curl
+      - git
+      - tar
+      - gzip
+      - python3-kubernetes
+      - python3-yaml
+    state: present
+    update_cache: true
+
+- name: Disable swap
+  ansible.builtin.shell: |
+    swapoff -a
+    sed -i '/swap/s/^/#/' /etc/fstab
+  changed_when: false
+
+- name: Enable kernel modules for container networking
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Set sysctl parameters for Kubernetes and Elasticsearch
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+    - { name: 'vm.max_map_count', value: '262144' }
