@@ -2,18 +2,18 @@
 - name: Check if Helm is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/helm
-  register: helm_binary
+  register: argocd_bootstrap_helm_binary
 
 - name: Download Helm installation script
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     dest: /tmp/get_helm.sh
     mode: '0700'
-  when: not helm_binary.stat.exists
+  when: not argocd_bootstrap_helm_binary.stat.exists
 
 - name: Execute Helm installation script
   ansible.builtin.command: /tmp/get_helm.sh
-  when: not helm_binary.stat.exists
+  when: not argocd_bootstrap_helm_binary.stat.exists
   changed_when: true
 
 - name: Add Helm repositories
@@ -61,7 +61,7 @@
     kind: Secret
     namespace: argocd
     name: argocd-initial-admin-secret
-  register: argocd_admin_secret
+  register: argocd_bootstrap_admin_secret
 
 - name: Print ArgoCD credentials
   ansible.builtin.debug:
@@ -69,5 +69,5 @@
       - "=========================================================="
       - "ArgoCD URL: Access via port-forward or server IP"
       - "Username: admin"
-      - "Password: {{ argocd_admin_secret.resources[0].data.password | b64decode }}"
+      - "Password: {{ argocd_bootstrap_admin_secret.resources[0].data.password | b64decode }}"
       - "=========================================================="
