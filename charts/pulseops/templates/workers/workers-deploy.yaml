@@ -1,0 +1,40 @@
+{{- range $workerName, $workerConfig := .Values.workers }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}-{{ $workerName }}-worker
+  labels:
+    app: {{ $workerName }}-worker
+spec:
+  replicas: {{ $workerConfig.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $workerName }}-worker
+  template:
+    metadata:
+      labels:
+        app: {{ $workerName }}-worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ $workerConfig.image.repository }}:{{ $workerConfig.image.tag }}"
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Release.Name }}-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              value: "redis://{{ $.Release.Name }}-redis-master:6379"
+            - name: KAFKA_BROKER
+              value: "{{ $.Release.Name }}-kafka:9092"
+            {{- if $workerConfig.processingDelayMs }}
+            - name: PROCESSING_DELAY_MS
+              value: {{ $workerConfig.processingDelayMs | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml $workerConfig.resources | nindent 12 }}
+---
+{{- end }}

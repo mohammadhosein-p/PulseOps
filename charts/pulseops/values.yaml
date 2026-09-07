@@ -1,0 +1,160 @@
+# global:
+#   imageRegistry: ghcr.io
+#   imageOwner: mohammadhosein-p
+#   imagePullSecrets:
+#     - name: ghcr-secret
+
+api:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/mohammadhosein-p/pulseops-api
+    tag: sha-fbaa478
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 4000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 150m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+web:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/mohammadhosein-p/pulseops-web
+    tag: sha-fbaa478
+    pullPolicy: Always
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30080
+  resources:
+    limits:
+      cpu: 150m
+      memory: 128Mi
+    requests:
+      cpu: 30m
+      memory: 32Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 80
+
+workers:
+  payment:
+    replicaCount: 1
+    image:
+      repository: ghcr.io/mohammadhosein-p/pulseops-payment-worker
+      tag: sha-fbaa478
+    processingDelayMs: 1500
+    resources:
+      limits:
+        cpu: 350m
+        memory: 384Mi
+      requests:
+        cpu: 100m
+        memory: 192Mi
+
+  inventory:
+    replicaCount: 1
+    image:
+      repository: ghcr.io/mohammadhosein-p/pulseops-inventory-worker
+      tag: sha-fbaa478
+    processingDelayMs: 1000
+    resources:
+      limits:
+        cpu: 350m
+        memory: 384Mi
+      requests:
+        cpu: 100m
+        memory: 192Mi
+
+  notification:
+    replicaCount: 1
+    image:
+      repository: ghcr.io/mohammadhosein-p/pulseops-notification-worker
+      tag: sha-fbaa478
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+# TODO: host volume mode 1001:1001
+postgresql:
+  enabled: true
+  image:
+    repository: bitnami/postgresql
+    tag: latest
+  auth:
+    username: pulseops
+    password: password
+    database: pulseops_db
+  primary:
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        memory: 128Mi
+    persistence:
+      size: 1Gi
+
+# TODO: host volume mode 1001:1001
+redis:
+  enabled: true
+  architecture: standalone
+  image:
+    repository: bitnami/redis
+    tag: latest
+  auth:
+    enabled: false
+  master:
+    resources:
+      limits:
+        memory: 128Mi
+      requests:
+        memory: 64Mi
+    persistence:
+      size: 1Gi
+
+# TODO: host volume mode 1001:1001
+kafka:
+  enabled: false
+  image:
+    repository: apache/kafka
+    tag: 3.8.1
+  kraft:
+    enabled: true
+  zookeeper:
+    enabled: false
+  listeners:
+    client:
+      protocol: PLAINTEXT
+  controller:
+    replicaCount: 1
+    resources:
+      limits:
+        memory: 768Mi
+      requests:
+        memory: 384Mi
+    heapOpts: "-Xmx384m -Xms384m"
+    persistence:
+      size: 2Gi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: ""
