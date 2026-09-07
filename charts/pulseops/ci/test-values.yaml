@@ -1,0 +1,18 @@
+workers:
+  payment:
+    autoscaling:
+      enabled: false
+  inventory:
+    autoscaling:
+      enabled: false
+  notification:
+    autoscaling:
+      enabled: false
+
+api:
+  autoscaling:
+    enabled: false
+
+web:
+  autoscaling:
+    enabled: false
