@@ -1,0 +1,28 @@
+{{- range $workerName, $workerConfig := .Values.workers }}
+{{- if and $workerConfig.autoscaling $workerConfig.autoscaling.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $.Release.Name }}-{{ $workerName }}-worker-scaledobject
+  labels:
+    app: {{ $workerName }}-worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $.Release.Name }}-{{ $workerName }}-worker
+  minReplicaCount: {{ $workerConfig.autoscaling.minReplicas | default 1 }}
+  maxReplicaCount: {{ $workerConfig.autoscaling.maxReplicas | default 5 }}
+  triggers:
+    {{- range $trigger := $workerConfig.autoscaling.triggers }}
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ $.Release.Name }}-kafka.{{ $.Release.Namespace }}.svc.cluster.local:9092
+        consumerGroup: {{ $trigger.consumerGroup }}
+        topic: {{ $trigger.topic }}
+        lagThreshold: {{ $trigger.lagThreshold | default "20" | quote }}
+        offsetResetPolicy: latest
+    {{- end }}
+---
+{{- end }}
+{{- end }}
