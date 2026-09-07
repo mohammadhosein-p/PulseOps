@@ -6,6 +6,8 @@
 
 api:
   replicaCount: 1
+  serviceMonitor:
+    enabled: true
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-api
     tag: sha-fbaa478

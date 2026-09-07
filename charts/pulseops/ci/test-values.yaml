@@ -10,6 +10,8 @@ workers:
       enabled: false
 
 api:
+  serviceMonitor:
+    enabled: false
   autoscaling:
     enabled: false
 
