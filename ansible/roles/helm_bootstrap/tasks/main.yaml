@@ -2,21 +2,21 @@
 - name: Check if Helm is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/helm
-  register: helm_binary
+  register: helm_bootstrap_helm_binary
 
 - name: Download Helm installation script
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     dest: /tmp/get_helm.sh
     mode: "0700"
-  when: not helm_binary.stat.exists
+  when: not helm_bootstrap_helm_binary.stat.exists
 
 - name: Install Helm
   ansible.builtin.command:
     cmd: /tmp/get_helm.sh
   environment:
-    DESIRED_VERSION: "{{ helm_version if helm_version | length > 0 else omit }}"
-  when: not helm_binary.stat.exists
+    DESIRED_VERSION: "{{ helm_bootstrap_helm_version if helm_bootstrap_helm_version | length > 0 else omit }}"
+  when: not helm_bootstrap_helm_binary.stat.exists
   changed_when: true
 
 - name: Add required Helm repositories
@@ -24,7 +24,7 @@
     name: "{{ item.name }}"
     repo_url: "{{ item.url }}"
     state: present
-  loop: "{{ helm_repositories }}"
+  loop: "{{ helm_bootstrap_helm_repositories }}"
 
 - name: Install NGINX Ingress Controller
   kubernetes.core.helm:
@@ -68,16 +68,16 @@
     namespace: argocd
     name: argocd-initial-admin-secret
     kubeconfig: /etc/rancher/k3s/k3s.yaml
-  register: argocd_admin_secret
+  register: helm_bootstrap_argocd_admin_secret
   retries: 30
   delay: 5
-  until: argocd_admin_secret.resources | length > 0
+  until: helm_bootstrap_argocd_admin_secret.resources | length > 0
 
 - name: Extract ArgoCD admin password
   ansible.builtin.set_fact:
-    argocd_admin_password: >-
+    helm_bootstrap_argocd_admin_password: >-
       {{
-        argocd_admin_secret.resources[0].data.password
+        helm_bootstrap_argocd_admin_secret.resources[0].data.password
         | b64decode
       }}
 
@@ -87,6 +87,6 @@
       - "=========================================================="
       - "ArgoCD has been installed successfully."
       - "Username: admin"
-      - "Password: {{ argocd_admin_password }}"
+      - "Password: {{ helm_bootstrap_argocd_admin_password }}"
       - "Access: kubectl port-forward svc/argocd-server -n argocd 8080:80"
       - "=========================================================="
