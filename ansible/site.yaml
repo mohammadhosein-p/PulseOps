@@ -1,12 +1,21 @@
 ---
-- name: Setup Production Kubernetes & GitOps Infrastructure
+- name: Setup Kubernetes Infrastructure
   hosts: k8s_servers
   become: true
   gather_facts: true
+
   roles:
     - role: common
-      tags: [common, prep]
+      tags:
+        - common
+        - prep
+
     - role: k3s
-      tags: [k3s, cluster]
-    - role: argocd_bootstrap
-      tags: [argocd, gitops]
+      tags:
+        - k3s
+        - cluster
+
+    - role: helm_bootstrap
+      tags:
+        - helm
+        - platform

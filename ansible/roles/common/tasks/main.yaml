@@ -1,23 +1,44 @@
 ---
-- name: Install essential tools and python kubernetes libraries
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install required system packages
   ansible.builtin.apt:
     name:
       - curl
       - git
       - tar
       - gzip
+      - ca-certificates
+      - python3
       - python3-kubernetes
       - python3-yaml
     state: present
-    update_cache: true
 
-- name: Disable swap
-  ansible.builtin.shell: |
-    swapoff -a
-    sed -i '/swap/s/^/#/' /etc/fstab
-  changed_when: false
+- name: Disable active swap
+  ansible.builtin.command:
+    cmd: swapoff -a
+  when: ansible_swaptotal_mb | int > 0
 
-- name: Enable kernel modules for container networking
+- name: Remove swap entries from fstab
+  ansible.posix.mount:
+    name: swap
+    fstype: swap
+    state: absent
+
+- name: Persist required kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/kubernetes.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      overlay
+      br_netfilter
+
+- name: Load required kernel modules
   community.general.modprobe:
     name: "{{ item }}"
     state: present
@@ -25,12 +46,22 @@
     - overlay
     - br_netfilter
 
-- name: Set sysctl parameters for Kubernetes and Elasticsearch
+- name: Configure required kernel parameters
   ansible.posix.sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
     state: present
     reload: true
+    sysctl_set: true
   loop:
-    - { name: 'net.ipv4.ip_forward', value: '1' }
-    - { name: 'vm.max_map_count', value: '262144' }
+    - name: net.ipv4.ip_forward
+      value: "1"
+
+    - name: net.bridge.bridge-nf-call-iptables
+      value: "1"
+
+    - name: net.bridge.bridge-nf-call-ip6tables
+      value: "1"
+
+    - name: vm.max_map_count
+      value: "262144"

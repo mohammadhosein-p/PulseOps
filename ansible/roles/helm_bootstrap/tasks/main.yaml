@@ -2,30 +2,31 @@
 - name: Check if Helm is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/helm
-  register: argocd_bootstrap_helm_binary
+  register: helm_binary
 
 - name: Download Helm installation script
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     dest: /tmp/get_helm.sh
-    mode: '0700'
-  when: not argocd_bootstrap_helm_binary.stat.exists
+    mode: "0700"
+  when: not helm_binary.stat.exists
 
-- name: Execute Helm installation script
-  ansible.builtin.command: /tmp/get_helm.sh
-  when: not argocd_bootstrap_helm_binary.stat.exists
+- name: Install Helm
+  ansible.builtin.command:
+    cmd: /tmp/get_helm.sh
+  environment:
+    DESIRED_VERSION: "{{ helm_version if helm_version | length > 0 else omit }}"
+  when: not helm_binary.stat.exists
   changed_when: true
 
-- name: Add Helm repositories
+- name: Add required Helm repositories
   kubernetes.core.helm_repository:
     name: "{{ item.name }}"
     repo_url: "{{ item.url }}"
-  loop:
-    - { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' }
-    - { name: 'kedacore', url: 'https://kedacore.github.io/charts' }
-    - { name: 'argo', url: 'https://argoproj.github.io/argo-helm' }
+    state: present
+  loop: "{{ helm_repositories }}"
 
-- name: Deploy NGINX Ingress Controller
+- name: Install NGINX Ingress Controller
   kubernetes.core.helm:
     name: ingress-nginx
     chart_ref: ingress-nginx/ingress-nginx
@@ -33,8 +34,9 @@
     create_namespace: true
     state: present
     wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
 
-- name: Deploy KEDA Operator
+- name: Install KEDA
   kubernetes.core.helm:
     name: keda
     chart_ref: kedacore/keda
@@ -42,8 +44,9 @@
     create_namespace: true
     state: present
     wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
 
-- name: Deploy ArgoCD
+- name: Install ArgoCD
   kubernetes.core.helm:
     name: argocd
     chart_ref: argo/argo-cd
@@ -51,23 +54,39 @@
     create_namespace: true
     state: present
     wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
     values:
       server:
         extraArgs:
           - --insecure
 
-- name: Read ArgoCD initial admin password
+
+- name: Wait for ArgoCD initial admin secret
   kubernetes.core.k8s_info:
+    api_version: v1
     kind: Secret
     namespace: argocd
     name: argocd-initial-admin-secret
-  register: argocd_bootstrap_admin_secret
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+  register: argocd_admin_secret
+  retries: 30
+  delay: 5
+  until: argocd_admin_secret.resources | length > 0
 
-- name: Print ArgoCD credentials
+- name: Extract ArgoCD admin password
+  ansible.builtin.set_fact:
+    argocd_admin_password: >-
+      {{
+        argocd_admin_secret.resources[0].data.password
+        | b64decode
+      }}
+
+- name: Display ArgoCD access information
   ansible.builtin.debug:
     msg:
       - "=========================================================="
-      - "ArgoCD URL: Access via port-forward or server IP"
+      - "ArgoCD has been installed successfully."
       - "Username: admin"
-      - "Password: {{ argocd_bootstrap_admin_secret.resources[0].data.password | b64decode }}"
+      - "Password: {{ argocd_admin_password }}"
+      - "Access: kubectl port-forward svc/argocd-server -n argocd 8080:80"
       - "=========================================================="

@@ -85,4 +85,4 @@ jobs:
           sudo kubectl get ns
 
           echo "=== 3. Pods Across All Namespaces ==="
-          sudo kubectl get pods -A
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get nodes

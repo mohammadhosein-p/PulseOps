@@ -1,0 +1,12 @@
+---
+helm_version: ""
+
+helm_repositories:
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+
+  - name: kedacore
+    url: https://kedacore.github.io/charts
+
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
