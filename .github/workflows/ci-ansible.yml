@@ -6,14 +6,14 @@ on:
     branches: [main]
     paths:
       - 'ansible/**'
-      - '.github/workflows/ci-ansible.yaml'
+      - '.github/workflows/ci-ansible.yml'
   push:
     branches:
       - main
       - feat/ansible
     paths:
       - 'ansible/**'
-      - '.github/workflows/ci-ansible.yaml'
+      - '.github/workflows/ci-ansible.yml'
 
 jobs:
   lint:
@@ -75,14 +75,12 @@ jobs:
           sudo -E env "PATH=$PATH" ANSIBLE_STDOUT_CALLBACK=default ansible-playbook site.yaml -i inventory/ci_hosts.ini
 
       - name: Verify K3s Cluster & Bootstrap Pods
-        env:
-          KUBECONFIG: /etc/rancher/k3s/k3s.yaml
         run: |
           echo "=== 1. Cluster Nodes Status ==="
-          sudo kubectl get nodes -o wide
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get nodes -o wide
 
           echo "=== 2. Installed Namespaces ==="
-          sudo kubectl get ns
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get ns
 
           echo "=== 3. Pods Across All Namespaces ==="
-          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get nodes
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pods -A
