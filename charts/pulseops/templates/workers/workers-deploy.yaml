@@ -18,6 +18,9 @@ spec:
       containers:
         - name: worker
           image: "{{ $workerConfig.image.repository }}:{{ $workerConfig.image.tag }}"
+          ports:
+            - name: metrics
+              containerPort: 9102
           env:
             - name: NODE_ENV
               value: "production"

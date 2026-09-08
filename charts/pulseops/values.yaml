@@ -192,3 +192,10 @@ ingress:
   enabled: true
   className: "nginx"
   host: ""
+
+workersMonitoring:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+  path: /metrics
+  releaseLabel: observability

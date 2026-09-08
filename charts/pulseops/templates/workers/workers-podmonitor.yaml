@@ -1,0 +1,21 @@
+{{- if and .Values.workersMonitoring .Values.workersMonitoring.enabled }}
+{{- range $workerName, $workerConfig := .Values.workers }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ $.Release.Name }}-{{ $workerName }}-monitor
+  labels:
+    app: {{ $workerName }}-worker
+    release: {{ $.Values.workersMonitoring.releaseLabel | default "observability" }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $workerName }}-worker
+  podMetricsEndpoints:
+    - port: metrics
+      path: {{ $.Values.workersMonitoring.path | default "/metrics" }}
+      interval: {{ $.Values.workersMonitoring.interval | default "15s" }}
+      scrapeTimeout: {{ $.Values.workersMonitoring.scrapeTimeout | default "10s" }}
+---
+{{- end }}
+{{- end }}
