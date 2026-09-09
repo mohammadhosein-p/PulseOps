@@ -10,9 +10,18 @@ workers:
       enabled: false
 
 api:
+  serviceMonitor:
+    enabled: false
   autoscaling:
     enabled: false
 
 web:
   autoscaling:
+    enabled: false
+
+workersMonitoring:
+  enabled: false
+
+kafka:
+  serviceMonitor:
     enabled: false

@@ -64,3 +64,19 @@ spec:
             requests:
               cpu: 250m
               memory: 512Mi
+
+        - name: kafka-exporter
+          image: danielqsj/kafka-exporter:v1.8.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--kafka.server=localhost:9092"
+          ports:
+            - containerPort: 9308
+              name: metrics
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi

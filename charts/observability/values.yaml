@@ -1,0 +1,68 @@
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      image:
+        registry: quay.io
+        repository: prometheus/prometheus
+        tag: v2.54.1
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      retention: 3d
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 512Mi
+
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      image:
+        registry: quay.io
+        repository: prometheus/alertmanager
+        tag: v0.27.0
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 128Mi
+
+  grafana:
+    enabled: true
+    adminPassword: "admin"
+    image:
+      repository: grafana/grafana
+      tag: 11.2.0
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+
+  nodeExporter:
+    enabled: true
+
+  prometheus-node-exporter:
+    image:
+      repository: quay.io/prometheus/node-exporter
+      tag: v1.8.2
+      pullPolicy: IfNotPresent
+
+  kubeStateMetrics:
+    enabled: true
+    
+  kube-state-metrics:
+    image:
+      registry: registry.k8s.io
+      repository: kube-state-metrics/kube-state-metrics
+      tag: v2.13.0
+      pullPolicy: IfNotPresent

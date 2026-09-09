@@ -6,14 +6,14 @@ on:
     branches: [main]
     paths:
       - "charts/**"
-      - ".github/workflows/chart-ci.yaml"
+      - ".github/workflows/ci-chart.yaml"
   push:
     branches:
       - main
       - feat/charts
     paths:
       - "charts/**"
-      - ".github/workflows/chart-ci.yaml"
+      - ".github/workflows/ci-chart.yaml"
 
 jobs:
   gitleaks:

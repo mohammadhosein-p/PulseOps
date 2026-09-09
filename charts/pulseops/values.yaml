@@ -6,9 +6,11 @@
 
 api:
   replicaCount: 1
+  serviceMonitor:
+    enabled: true
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-api
-    tag: sha-fbaa478
+    tag: sha-448c3cf
     pullPolicy: Always
   service:
     type: ClusterIP
@@ -31,7 +33,7 @@ web:
   replicaCount: 1
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-web
-    tag: sha-fbaa478
+    tag: sha-448c3cf
     pullPolicy: Always
   service:
     type: NodePort
@@ -56,7 +58,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-payment-worker
-      tag: sha-fbaa478
+      tag: sha-448c3cf
     processingDelayMs: 1500
     resources:
       limits:
@@ -78,7 +80,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-inventory-worker
-      tag: sha-fbaa478
+      tag: sha-448c3cf
     processingDelayMs: 1000
     resources:
       limits:
@@ -100,7 +102,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-notification-worker
-      tag: sha-fbaa478
+      tag: sha-448c3cf
     processingDelayMs: 500
     resources:
       limits:
@@ -185,8 +187,17 @@ kafka:
     heapOpts: "-Xmx384m -Xms384m"
     persistence:
       size: 2Gi
+  serviceMonitor:
+    enabled: true
 
 ingress:
   enabled: true
   className: "nginx"
   host: ""
+
+workersMonitoring:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+  path: /metrics
+  releaseLabel: observability

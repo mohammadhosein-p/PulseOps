@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-pulseops-dashboard
+  labels:
+    grafana_dashboard: "1"
+data:
+  pulseops.json: |-
+{{ .Files.Get "dashboards/pulseops.json" | indent 4 }}
