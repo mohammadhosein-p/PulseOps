@@ -187,6 +187,8 @@ kafka:
     heapOpts: "-Xmx384m -Xms384m"
     persistence:
       size: 2Gi
+  serviceMonitor:
+    enabled: true
 
 ingress:
   enabled: true
