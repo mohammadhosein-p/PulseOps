@@ -15,7 +15,6 @@
   ansible.builtin.command:
     cmd: /tmp/k3s_install.sh
   environment:
-    INSTALL_K3S_VERSION: "{{ k3s_version if k3s_version | length > 0 else omit }}"
     INSTALL_K3S_EXEC: >-
       server
       {% if k3s_disable_traefik %}
@@ -34,7 +33,7 @@
 
 - name: Wait for K3s Kubernetes API
   ansible.builtin.wait_for:
-    host: "{{ k3s_api_endpoint }}"
+    host: 127.0.0.1
     port: 6443
     delay: 5
     timeout: 120

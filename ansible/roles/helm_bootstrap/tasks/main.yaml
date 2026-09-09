@@ -14,8 +14,8 @@
 - name: Install Helm
   ansible.builtin.command:
     cmd: /tmp/get_helm.sh
-  environment:
-    DESIRED_VERSION: "{{ helm_bootstrap_helm_version if helm_bootstrap_helm_version | length > 0 else omit }}"
+  # environment:
+  #   DESIRED_VERSION: "{{ helm_bootstrap_helm_version if helm_bootstrap_helm_version | length > 0 else omit }}"
   when: not helm_bootstrap_helm_binary.stat.exists
   changed_when: true
 
