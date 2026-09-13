@@ -9,9 +9,9 @@
       tags:
         - common
         - prep
-    
+
     - role: xray
-      tags: 
+      tags:
         - xray
         - vpn
 

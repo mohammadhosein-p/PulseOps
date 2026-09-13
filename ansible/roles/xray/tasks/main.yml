@@ -75,7 +75,7 @@
         - 'http_proxy="http://127.0.0.1:{{ xray_http_port }}"'
         - 'https_proxy="http://127.0.0.1:{{ xray_http_port }}"'
 
-    - name: Verify outbound connectivity through the Xray SOCKS proxy
+    - name: Verify outbound connectivity through the Xray SOCKS proxy  # noqa command-instead-of-module
       ansible.builtin.command: >
         curl -s -o /dev/null -w '%{http_code}'
         -x socks5://127.0.0.1:{{ xray_socks_port }}
