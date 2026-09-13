@@ -9,6 +9,11 @@
       tags:
         - common
         - prep
+    
+    - role: xray
+      tags: 
+        - xray
+        - vpn
 
     - role: k3s
       tags:

@@ -1,0 +1,89 @@
+---
+- name: Check whether a local Xray config.json exists on the control node
+  ansible.builtin.stat:
+    path: "{{ xray_local_config_path }}"
+  delegate_to: localhost
+  become: false
+  register: xray_local_config
+
+- name: Skip Xray role entirely (no local config.json found)
+  ansible.builtin.debug:
+    msg: >
+      No config.json found at {{ xray_local_config_path }} on the control node.
+      Skipping the Xray role — nothing will be installed or changed on this host.
+  when: not xray_local_config.stat.exists
+
+- name: Xray setup
+  when: xray_local_config.stat.exists
+  block:
+    - name: Install Xray-core (skipped if already installed)
+      ansible.builtin.shell: |
+        bash -c "$(curl -L {{ xray_install_script_url }})" @ install
+      args:
+        creates: /usr/local/bin/xray
+
+    - name: Verify Xray installation
+      ansible.builtin.command: xray version
+      register: xray_version_output
+      changed_when: false
+
+    - name: Show installed Xray version
+      ansible.builtin.debug:
+        var: xray_version_output.stdout_lines
+
+    - name: Ensure Xray config directory exists
+      ansible.builtin.file:
+        path: "{{ xray_config_remote_path | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Deploy Xray config.json from control node
+      ansible.builtin.copy:
+        src: "{{ xray_local_config_path }}"
+        dest: "{{ xray_config_remote_path }}"
+        owner: root
+        group: root
+        mode: "0640"
+      notify: Restart xray
+
+    - name: Validate Xray configuration
+      ansible.builtin.command: "xray run -test -config {{ xray_config_remote_path }}"
+      register: xray_test_output
+      changed_when: false
+      failed_when: "'Configuration OK' not in xray_test_output.stdout"
+
+    - name: Enable and start Xray service
+      ansible.builtin.systemd:
+        name: xray
+        enabled: true
+        state: started
+
+    - name: Flush handlers so a freshly-deployed config takes effect immediately
+      ansible.builtin.meta: flush_handlers
+
+    - name: Persist proxy environment variables system-wide
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "{{ item }}"
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - 'http_proxy="http://127.0.0.1:{{ xray_http_port }}"'
+        - 'https_proxy="http://127.0.0.1:{{ xray_http_port }}"'
+
+    - name: Verify outbound connectivity through the Xray SOCKS proxy
+      ansible.builtin.command: >
+        curl -s -o /dev/null -w '%{http_code}'
+        -x socks5://127.0.0.1:{{ xray_socks_port }}
+        https://www.google.com
+      register: xray_conn_test
+      changed_when: false
+      failed_when: false
+
+    - name: Show connectivity test result
+      ansible.builtin.debug:
+        msg: "Proxy connectivity HTTP status: {{ xray_conn_test.stdout }}"

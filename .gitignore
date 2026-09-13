@@ -27,3 +27,5 @@ Thumbs.db
 SKILL.md
 
 journal.txt
+
+ansible/roles/xray/files/config.json

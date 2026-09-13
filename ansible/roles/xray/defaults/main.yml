@@ -1,0 +1,11 @@
+---
+# Path is relative to this role's directory. This file must exist on the
+# control node (your laptop) and must NEVER be committed to git — see the
+# .gitignore note in the README.
+xray_local_config_path: "{{ role_path }}/files/config.json"
+
+xray_config_remote_path: /usr/local/etc/xray/config.json
+xray_install_script_url: "https://github.com/XTLS/Xray-install/raw/main/install-release.sh"
+
+xray_socks_port: 1080
+xray_http_port: 1081
