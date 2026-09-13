@@ -3,6 +3,8 @@
   hosts: k8s_servers
   become: true
   gather_facts: true
+  vars:
+    gitops_manifests_dir: "{{ playbook_dir }}/../gitops"
 
   roles:
     - role: common
