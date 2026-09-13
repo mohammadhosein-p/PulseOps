@@ -66,3 +66,89 @@ kube-prometheus-stack:
       repository: kube-state-metrics/kube-state-metrics
       tag: v2.13.0
       pullPolicy: IfNotPresent
+
+elasticsearch:
+  enabled: true
+  replicas: 1
+  minimumMasterNodes: 1
+  clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
+  esJavaOpts: "-Xmx2g -Xms2g"
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "2Gi"
+    limits:
+      cpu: "1000m"
+      memory: "3.5Gi"
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 5Gi
+
+logstash:
+  enabled: true
+  replicas: 1
+  logstashJavaOpts: "-Xmx512m -Xms512m"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  logstashPipeline:
+    logstash.conf: |
+      input {
+        beats {
+          port => 5044
+        }
+      }
+      filter {
+        json {
+          source => "message"
+          skip_on_invalid_json => true
+        }
+      }
+      output {
+        elasticsearch {
+          hosts => ["http://observability-elasticsearch:9200"]
+          index => "pulseops-logs-%{+YYYY.MM.dd}"
+        }
+      }
+
+kibana:
+  enabled: true
+  replicas: 1
+  elasticsearchHosts: "http://observability-elasticsearch:9200"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+filebeat:
+  enabled: true
+  filebeatConfig:
+    filebeat.yml: |
+      filebeat.inputs:
+      - type: container
+        paths:
+          - /var/log/pods/*/*/*.log
+        processors:
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/pods/"
+      output.logstash:
+        hosts: ["observability-logstash:5044"]
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "100Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
