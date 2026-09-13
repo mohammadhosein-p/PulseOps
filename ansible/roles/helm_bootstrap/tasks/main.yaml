@@ -1,0 +1,92 @@
+---
+- name: Check if Helm is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/helm
+  register: helm_bootstrap_helm_binary
+
+- name: Download Helm installation script
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: "0700"
+  when: not helm_bootstrap_helm_binary.stat.exists
+
+- name: Install Helm
+  ansible.builtin.command:
+    cmd: /tmp/get_helm.sh
+  # environment:
+  #   DESIRED_VERSION: "{{ helm_bootstrap_helm_version if helm_bootstrap_helm_version | length > 0 else omit }}"
+  when: not helm_bootstrap_helm_binary.stat.exists
+  changed_when: true
+
+- name: Add required Helm repositories
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+    state: present
+  loop: "{{ helm_bootstrap_helm_repositories }}"
+
+- name: Install NGINX Ingress Controller
+  kubernetes.core.helm:
+    name: ingress-nginx
+    chart_ref: ingress-nginx/ingress-nginx
+    release_namespace: ingress-nginx
+    create_namespace: true
+    state: present
+    wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+- name: Install KEDA
+  kubernetes.core.helm:
+    name: keda
+    chart_ref: kedacore/keda
+    release_namespace: keda
+    create_namespace: true
+    state: present
+    wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+- name: Install ArgoCD
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: argocd
+    create_namespace: true
+    state: present
+    wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    values:
+      server:
+        extraArgs:
+          - --insecure
+
+
+- name: Wait for ArgoCD initial admin secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    namespace: argocd
+    name: argocd-initial-admin-secret
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+  register: helm_bootstrap_argocd_admin_secret
+  retries: 30
+  delay: 5
+  until: helm_bootstrap_argocd_admin_secret.resources | length > 0
+
+- name: Extract ArgoCD admin password
+  ansible.builtin.set_fact:
+    helm_bootstrap_argocd_admin_password: >-
+      {{
+        helm_bootstrap_argocd_admin_secret.resources[0].data.password
+        | b64decode
+      }}
+
+- name: Display ArgoCD access information
+  ansible.builtin.debug:
+    msg:
+      - "=========================================================="
+      - "ArgoCD has been installed successfully."
+      - "Username: admin"
+      - "Password: {{ helm_bootstrap_argocd_admin_password }}"
+      - "Access: kubectl port-forward svc/argocd-server -n argocd 8080:80"
+      - "=========================================================="

@@ -1,0 +1,86 @@
+name: Ansible Infrastructure CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ci-ansible.yml'
+  push:
+    branches:
+      - main
+      - feat/ansible
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ci-ansible.yml'
+
+jobs:
+  lint:
+    name: Lint & Syntax Check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Linting Tools & Ansible Collections
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core ansible-lint yamllint kubernetes jsonpatch pyyaml
+          ansible-galaxy collection install -r ansible/requirements.yaml
+
+      - name: Check Ansible Playbook Syntax
+        run: |
+          cd ansible
+          ansible-playbook site.yaml --syntax-check
+
+      - name: Run Ansible Lint
+        run: |
+          cd ansible
+          ansible-lint site.yaml
+
+  integration-test:
+    name: K3s & Bootstrap Integration Test
+    needs: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies & Ansible Collections
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible-core kubernetes jsonpatch pyyaml
+          ansible-galaxy collection install -r ansible/requirements.yaml
+
+      - name: Prepare Local Inventory for CI
+        run: |
+          cd ansible
+          mkdir -p inventory
+          echo -e "[k8s_servers]\nlocalhost ansible_connection=local ansible_host=127.0.0.1" > inventory/ci_hosts.ini
+
+      - name: Run Ansible Playbook
+        run: |
+          cd ansible
+          sudo -E env "PATH=$PATH" ANSIBLE_STDOUT_CALLBACK=default ansible-playbook site.yaml -i inventory/ci_hosts.ini
+
+      - name: Verify K3s Cluster & Bootstrap Pods
+        run: |
+          echo "=== 1. Cluster Nodes Status ==="
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get nodes -o wide
+
+          echo "=== 2. Installed Namespaces ==="
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get ns
+
+          echo "=== 3. Pods Across All Namespaces ==="
+          sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pods -A

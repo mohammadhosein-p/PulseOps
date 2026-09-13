@@ -1,0 +1,24 @@
+---
+# Kubernetes / K3s API endpoint
+k3s_api_endpoint: "{{ ansible_host }}"
+
+# Leave empty to install the latest K3s release.
+# For reproducible deployments, pin a specific version.
+k3s_version: ""
+
+# K3s configuration
+k3s_disable_traefik: true
+
+# Helm
+helm_version: ""
+
+# Helm repositories
+helm_repositories:
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+
+  - name: kedacore
+    url: https://kedacore.github.io/charts
+
+  - name: argo
+    url: https://argoproj.github.io/argo-helm

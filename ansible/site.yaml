@@ -1,0 +1,26 @@
+---
+- name: Setup Kubernetes Infrastructure
+  hosts: k8s_servers
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: common
+      tags:
+        - common
+        - prep
+
+    - role: xray
+      tags:
+        - xray
+        - vpn
+
+    - role: k3s
+      tags:
+        - k3s
+        - cluster
+
+    - role: helm_bootstrap
+      tags:
+        - helm
+        - platform

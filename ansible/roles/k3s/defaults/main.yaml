@@ -1,0 +1,6 @@
+---
+k3s_api_endpoint: "{{ ansible_host }}"
+
+k3s_version: ""
+
+k3s_disable_traefik: true
