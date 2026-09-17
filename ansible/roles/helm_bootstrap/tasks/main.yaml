@@ -1,4 +1,23 @@
 ---
+- name: Ensure Prometheus Operator CRDs are installed
+  kubernetes.core.k8s:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    src: "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.76.2/example/prometheus-operator-crd/monitoring.coreos.com_{{ item }}.yaml"
+    state: present
+    server_side_apply:
+      field_manager: ansible
+  loop:
+    - alertmanagerconfigs
+    - alertmanagers
+    - podmonitors
+    - probes
+    - prometheusagents
+    - prometheuses
+    - prometheusrules
+    - scrapeconfigs
+    - servicemonitors
+    - thanosrulers
+
 - name: Check if Helm is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/helm
