@@ -28,4 +28,4 @@ SKILL.md
 
 journal.txt
 
-ansible/roles/xray/files/config.json
+ansible/roles/xray/files/*.json
