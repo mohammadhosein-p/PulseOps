@@ -16,6 +16,13 @@
       - python3-kubernetes
       - python3-yaml
     state: present
+  environment:
+    HTTP_PROXY: ""
+    HTTPS_PROXY: ""
+    ALL_PROXY: ""
+    http_proxy: ""
+    https_proxy: ""
+    all_proxy: ""
 
 - name: Disable active swap
   ansible.builtin.command:

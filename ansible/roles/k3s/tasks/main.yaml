@@ -4,6 +4,21 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
+- name: Configure K3s systemd proxy environment
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/k3s.service.env
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      HTTP_PROXY="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      HTTPS_PROXY="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      http_proxy="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      https_proxy="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      NO_PROXY="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
+      no_proxy="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
+  register: k3s_proxy_env
+
 - name: Download K3s installation script
   ansible.builtin.get_url:
     url: https://get.k3s.io
@@ -25,6 +40,13 @@
   when: not k3s_binary.stat.exists
   changed_when: true
 
+- name: Reload systemd and restart K3s if proxy configuration changed
+  ansible.builtin.systemd:
+    name: k3s
+    daemon_reload: true
+    state: restarted
+  when: k3s_binary.stat.exists and k3s_proxy_env.changed
+
 - name: Ensure K3s service is enabled and running
   ansible.builtin.systemd:
     name: k3s
@@ -37,6 +59,21 @@
     port: 6443
     delay: 5
     timeout: 120
+
+- name: Ensure default .kube directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    mode: "0755"
+
+- name: Copy K3s kubeconfig to default user kubeconfig (for Helm & CLI)
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ ansible_env.HOME }}/.kube/config"
+    remote_src: true
+    owner: "{{ ansible_user_id }}"
+    mode: "0600"
 
 - name: Get Kubernetes nodes
   kubernetes.core.k8s_info:
