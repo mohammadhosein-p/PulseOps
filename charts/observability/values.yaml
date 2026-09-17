@@ -73,6 +73,11 @@ elasticsearch:
   minimumMasterNodes: 1
   clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
   esJavaOpts: "-Xmx2g -Xms2g"
+  esConfig:
+    elasticsearch.yml: |
+      xpack.security.enabled: false
+      xpack.security.http.ssl.enabled: false
+      xpack.security.transport.ssl.enabled: false
   resources:
     requests:
       cpu: "200m"
@@ -90,6 +95,13 @@ logstash:
   enabled: true
   replicas: 1
   logstashJavaOpts: "-Xmx512m -Xms512m"
+  service:
+    type: ClusterIP
+    ports:
+      - name: beats
+        port: 5044
+        protocol: TCP
+        targetPort: 5044
   resources:
     requests:
       cpu: "100m"
@@ -112,7 +124,7 @@ logstash:
       }
       output {
         elasticsearch {
-          hosts => ["http://observability-elasticsearch:9200"]
+          hosts => ["http://elasticsearch-master:9200"]
           index => "pulseops-logs-%{+YYYY.MM.dd}"
         }
       }
@@ -120,7 +132,8 @@ logstash:
 kibana:
   enabled: true
   replicas: 1
-  elasticsearchHosts: "http://observability-elasticsearch:9200"
+  elasticsearchHosts: "http://elasticsearch-master:9200"
+  elasticsearchCertificateSecret: ""
   resources:
     requests:
       cpu: "100m"
