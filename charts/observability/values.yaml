@@ -59,7 +59,7 @@ kube-prometheus-stack:
 
   kubeStateMetrics:
     enabled: true
-    
+
   kube-state-metrics:
     image:
       registry: registry.k8s.io
@@ -73,11 +73,7 @@ elasticsearch:
   minimumMasterNodes: 1
   clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
   esJavaOpts: "-Xmx2g -Xms2g"
-  esConfig:
-    elasticsearch.yml: |
-      xpack.security.enabled: false
-      xpack.security.http.ssl.enabled: false
-      xpack.security.transport.ssl.enabled: false
+
   resources:
     requests:
       cpu: "200m"
@@ -86,7 +82,8 @@ elasticsearch:
       cpu: "1000m"
       memory: "3.5Gi"
   volumeClaimTemplate:
-    accessModes: ["ReadWriteOnce"]
+    accessModes:
+      - ReadWriteOnce
     resources:
       requests:
         storage: 5Gi
@@ -124,7 +121,10 @@ logstash:
       }
       output {
         elasticsearch {
-          hosts => ["http://elasticsearch-master:9200"]
+          hosts => ["https://elasticsearch-master:9200"]
+          user => "elastic"
+          password => "${ELASTIC_PASSWORD}"
+          ssl_certificate_verification => false
           index => "pulseops-logs-%{+YYYY.MM.dd}"
         }
       }
@@ -132,9 +132,11 @@ logstash:
 kibana:
   enabled: true
   replicas: 1
-  elasticsearchHosts: "http://elasticsearch-master:9200"
+
+  elasticsearchHosts: "https://elasticsearch-master:9200"
   elasticsearchCertificateSecret: "elasticsearch-master-certs"
-  serviceAccountToken: "pulseops-bypass-token"
+  elasticsearchCredentialSecret: "elasticsearch-master-credentials"
+
   resources:
     requests:
       cpu: "100m"
@@ -148,15 +150,17 @@ filebeat:
   filebeatConfig:
     filebeat.yml: |
       filebeat.inputs:
-      - type: container
-        paths:
-          - /var/log/pods/*/*/*.log
-        processors:
-        - add_kubernetes_metadata:
-            host: ${NODE_NAME}
-            matchers:
-            - logs_path:
-                logs_path: "/var/log/pods/"
+        - type: container
+          paths:
+            - /var/log/pods/*/*/*.log
+
+          processors:
+            - add_kubernetes_metadata:
+                host: ${NODE_NAME}
+                matchers:
+                  - logs_path:
+                      logs_path: "/var/log/pods/"
+
       output.logstash:
         hosts: ["observability-logstash:5044"]
   resources:
