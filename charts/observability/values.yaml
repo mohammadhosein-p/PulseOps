@@ -125,10 +125,7 @@ logstash:
       }
       output {
         elasticsearch {
-          hosts => ["https://elasticsearch-master:9200"]
-          user => "elastic"
-          password => "${ELASTIC_PASSWORD}"
-          ssl_certificate_verification => false
+          hosts => ["http://elasticsearch-master:9200"]
           index => "pulseops-logs-%{+YYYY.MM.dd}"
         }
       }
