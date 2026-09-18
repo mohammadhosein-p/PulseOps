@@ -9,11 +9,12 @@ on:
       - '.github/workflows/ci-build-images.yml'
   push:
     branches: 
-     - main
-     - feat/apps-docker-image
+      - main
+      - feat/apps-docker-image
     paths: 
       - 'apps/**'
       - '.github/workflows/ci-build-images.yml'
+
 env:
   REGISTRY: ghcr.io
 
@@ -78,3 +79,40 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  update-gitops:
+    name: Update GitOps Image Tags
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout GitOps Repository
+        uses: actions/checkout@v4
+
+      - name: Update tags in Helm values
+        run: |
+          SHORT_SHA="sha-$(echo ${{ github.sha }} | cut -c1-7)"
+          VALUES_FILE="charts/pulseops/values.yaml"
+          
+          yq -i ".api.image.tag = \"${SHORT_SHA}\"" "$VALUES_FILE"
+          yq -i ".web.image.tag = \"${SHORT_SHA}\"" "$VALUES_FILE"
+          yq -i ".workers.payment.image.tag = \"${SHORT_SHA}\"" "$VALUES_FILE"
+          yq -i ".workers.inventory.image.tag = \"${SHORT_SHA}\"" "$VALUES_FILE"
+          yq -i ".workers.notification.image.tag = \"${SHORT_SHA}\"" "$VALUES_FILE"
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if git diff --quiet charts/pulseops/values.yaml; then
+            echo "No changes in image tags. Skipping commit."
+            exit 0
+          fi
+          
+          git add charts/pulseops/values.yaml
+          git commit -m "chore(gitops): bump pulseops image tags to sha-$(echo ${{ github.sha }} | cut -c1-7)"
+          git push origin main
