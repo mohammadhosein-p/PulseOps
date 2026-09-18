@@ -73,9 +73,6 @@ elasticsearch:
   minimumMasterNodes: 1
   clusterHealthCheckParams: "wait_for_status=yellow&timeout=10s"
   esJavaOpts: "-Xmx1g -Xms1g"
-  extraEnvs:
-    - name: ELASTIC_PASSWORD
-      value: "PulseOpsElastic2026!"
   esConfig:
     elasticsearch.yml: |
       xpack.security.enabled: true

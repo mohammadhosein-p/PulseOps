@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-frontend-cert
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: {{ .Release.Name }}-tls
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+  commonName: "pulseops-frontend"
+  dnsNames:
+    - localhost
+    - pulseops.local
+    {{- if .Values.ingress.host }}
+    - {{ .Values.ingress.host }}
+    {{- end }}
+  ipAddresses:
+    - 127.0.0.1
