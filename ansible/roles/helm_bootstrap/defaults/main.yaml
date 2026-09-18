@@ -8,5 +8,8 @@ helm_bootstrap_helm_repositories:
   - name: kedacore
     url: https://kedacore.github.io/charts
 
+  - name: jetstack
+    url: https://charts.jetstack.io
+
   - name: argo
     url: https://argoproj.github.io/argo-helm

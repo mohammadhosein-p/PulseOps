@@ -66,6 +66,18 @@
     wait: true
     kubeconfig: /etc/rancher/k3s/k3s.yaml
 
+- name: Install cert-manager
+  kubernetes.core.helm:
+    name: cert-manager
+    chart_ref: jetstack/cert-manager
+    release_namespace: cert-manager
+    create_namespace: true
+    state: present
+    wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    values:
+      installCRDs: true
+
 - name: Install ArgoCD
   kubernetes.core.helm:
     name: argocd
@@ -80,6 +92,17 @@
         extraArgs:
           - --insecure
 
+- name: Create Self-Signed ClusterIssuer
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: selfsigned-issuer
+      spec:
+        selfSigned: {}
 
 - name: Wait for ArgoCD initial admin secret
   kubernetes.core.k8s_info:
