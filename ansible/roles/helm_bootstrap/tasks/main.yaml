@@ -122,6 +122,26 @@
   delay: 3
   until: helm_bootstrap_argocd_crd_check.resources | length > 0
 
+- name: Ensure Elasticsearch TLS certificates exist
+  ansible.builtin.command: >
+    openssl req -x509 -newkey rsa:2048 -nodes -days 3650
+    -subj "/CN=elasticsearch-master"
+    -keyout /tmp/es-tls.key
+    -out /tmp/es-tls.crt
+  args:
+    creates: /tmp/es-tls.crt
+
+- name: Create or update elasticsearch-master-certs secret in Kubernetes
+  ansible.builtin.shell: >
+    kubectl create secret generic elasticsearch-master-certs
+    --from-file=ca.crt=/tmp/es-tls.crt
+    --from-file=tls.crt=/tmp/es-tls.crt
+    --from-file=tls.key=/tmp/es-tls.key
+    -n default --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: false
+
 - name: Deploy ArgoCD Applications (from isolated gitops directory)
   kubernetes.core.k8s:
     state: present
