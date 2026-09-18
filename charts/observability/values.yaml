@@ -130,22 +130,16 @@ logstash:
       }
 
 kibana:
-  enabled: false
-# kibana:
-#   enabled: true
-#   replicas: 1
-
-#   elasticsearchHosts: "https://elasticsearch-master:9200"
-#   elasticsearchCertificateSecret: "elasticsearch-master-certs"
-#   elasticsearchCredentialSecret: "elasticsearch-master-credentials"
-
-#   resources:
-#     requests:
-#       cpu: "100m"
-#       memory: "512Mi"
-#     limits:
-#       cpu: "500m"
-#       memory: "1Gi"
+  enabled: true
+  replicas: 1
+  elasticsearchHosts: "http://elasticsearch-master:9200"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
 
 filebeat:
   enabled: true

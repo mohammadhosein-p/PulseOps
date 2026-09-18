@@ -122,30 +122,30 @@
   delay: 3
   until: helm_bootstrap_argocd_crd_check.resources | length > 0
 
-- name: Ensure Elasticsearch TLS certificates exist
-  ansible.builtin.command: >
-    openssl req -x509 -newkey rsa:2048 -nodes -days 3650
-    -subj "/CN=elasticsearch-master"
-    -keyout /tmp/es-tls.key
-    -out /tmp/es-tls.crt
-  args:
-    creates: /tmp/es-tls.crt
+# - name: Ensure Elasticsearch TLS certificates exist
+#   ansible.builtin.command: >
+#     openssl req -x509 -newkey rsa:2048 -nodes -days 3650
+#     -subj "/CN=elasticsearch-master"
+#     -keyout /tmp/es-tls.key
+#     -out /tmp/es-tls.crt
+#   args:
+#     creates: /tmp/es-tls.crt
 
-- name: Create or update elasticsearch-master-certs secret in Kubernetes
-  kubernetes.core.k8s:
-    state: present
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: elasticsearch-master-certs
-        namespace: default
-      type: Opaque
-      data:
-        ca.crt: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.crt') | b64encode }}"
-        tls.crt: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.crt') | b64encode }}"
-        tls.key: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.key') | b64encode }}"
+# - name: Create or update elasticsearch-master-certs secret in Kubernetes
+#   kubernetes.core.k8s:
+#     state: present
+#     kubeconfig: /etc/rancher/k3s/k3s.yaml
+#     definition:
+#       apiVersion: v1
+#       kind: Secret
+#       metadata:
+#         name: elasticsearch-master-certs
+#         namespace: default
+#       type: Opaque
+#       data:
+#         ca.crt: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.crt') | b64encode }}"
+#         tls.crt: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.crt') | b64encode }}"
+#         tls.key: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.key') | b64encode }}"
 
 - name: Deploy ArgoCD Applications (from isolated gitops directory)
   kubernetes.core.k8s:
