@@ -16,8 +16,8 @@
     - scrapeconfigs
     - servicemonitors
     - thanosrulers
-  register: crd_apply
-  changed_when: "'configured' in crd_apply.stdout or 'created' in crd_apply.stdout"
+  register: helm_bootstrap_crd_apply
+  changed_when: "'configured' in helm_bootstrap_crd_apply.stdout or 'created' in helm_bootstrap_crd_apply.stdout"
 
 - name: Check if Helm is already installed
   ansible.builtin.stat:
