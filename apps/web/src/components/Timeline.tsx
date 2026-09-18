@@ -30,7 +30,7 @@ const getStatusBadge = (status: OrderStatus) => {
 };
 
 interface Prop {
-    events: OrderEvent[]
+    events: OrderEvent[];
 }
 
 // export const Timeline: React.FC<{ events: OrderEvent[] }> = ({ events }) => {
@@ -38,7 +38,7 @@ interface Prop {
 export const Timeline = ({ events }: Prop) => {
     return (
         <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-            {events.map((event) => {
+            {(Array.isArray(events) ? events : []).map((event) => {
                 const {
                     icon: Icon,
                     color,

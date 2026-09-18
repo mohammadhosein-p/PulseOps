@@ -119,7 +119,7 @@ export const OrdersPipelinePage: React.FC = () => {
                             "COMPLETED",
                             "PENDING",
                             "INVENTORY_FAILED",
-                        ].map((st) => (
+                        ]?.map((st) => (
                             <button
                                 key={st}
                                 onClick={() => setFilterStatus(st)}
@@ -160,44 +160,48 @@ export const OrdersPipelinePage: React.FC = () => {
                         </span>
 
                         <div className="space-y-2">
-                            {orders.map((order) => {
-                                const isSelected =
-                                    selectedOrder?.id === order.id;
-                                return (
-                                    <div
-                                        key={order.id}
-                                        onClick={() => {
-                                            setSelectedOrder(order);
-                                            fetchOrderDetails(order.id);
-                                        }}
-                                        className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col gap-2 ${
-                                            isSelected
-                                                ? "bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-500/5"
-                                                : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700"
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-mono text-xs font-bold text-slate-200">
-                                                {order.id.slice(0, 18)}...
-                                            </span>
-                                            <span
-                                                className={`text-[11px] font-mono px-2 py-0.5 rounded-md border ${getStatusStyle(
-                                                    order.status,
-                                                )}`}
-                                            >
-                                                {order.status}
-                                            </span>
-                                        </div>
+                            {(Array.isArray(orders) ? orders : [])?.map(
+                                (order) => {
+                                    const isSelected =
+                                        selectedOrder?.id === order.id;
+                                    return (
+                                        <div
+                                            key={order.id}
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                fetchOrderDetails(order.id);
+                                            }}
+                                            className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col gap-2 ${
+                                                isSelected
+                                                    ? "bg-indigo-600/10 border-indigo-500/50 shadow-lg shadow-indigo-500/5"
+                                                    : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700"
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-mono text-xs font-bold text-slate-200">
+                                                    {order.id.slice(0, 18)}...
+                                                </span>
+                                                <span
+                                                    className={`text-[11px] font-mono px-2 py-0.5 rounded-md border ${getStatusStyle(
+                                                        order.status,
+                                                    )}`}
+                                                >
+                                                    {order.status}
+                                                </span>
+                                            </div>
 
-                                        <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
-                                            <span>{order.customerEmail}</span>
-                                            <span className="text-slate-200 font-bold">
-                                                ${order.totalAmount}
-                                            </span>
+                                            <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                                                <span>
+                                                    {order.customerEmail}
+                                                </span>
+                                                <span className="text-slate-200 font-bold">
+                                                    ${order.totalAmount}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                },
+                            )}
                         </div>
                     </div>
 
@@ -260,28 +264,29 @@ export const OrdersPipelinePage: React.FC = () => {
                                         Order Items Specification
                                     </span>
                                     <div className="space-y-1.5">
-                                        {selectedOrder.items?.map(
-                                            (item, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="flex items-center justify-between p-3 rounded-lg bg-slate-950/40 border border-slate-800/60 text-xs font-mono"
-                                                >
-                                                    <span className="text-slate-300">
-                                                        {item.product?.name ||
-                                                            `Product ID: ${item.productId}`}
-                                                    </span>
-                                                    <span className="text-slate-400">
-                                                        {item.quantity} x $
-                                                        {item.price} ={" "}
-                                                        <strong className="text-slate-200">
-                                                            $
-                                                            {item.quantity *
-                                                                item.price}
-                                                        </strong>
-                                                    </span>
-                                                </div>
-                                            ),
-                                        )}
+                                        {(Array.isArray(selectedOrder.items)
+                                            ? selectedOrder.items
+                                            : []
+                                        )?.map((item, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center justify-between p-3 rounded-lg bg-slate-950/40 border border-slate-800/60 text-xs font-mono"
+                                            >
+                                                <span className="text-slate-300">
+                                                    {item.product?.name ||
+                                                        `Product ID: ${item.productId}`}
+                                                </span>
+                                                <span className="text-slate-400">
+                                                    {item.quantity} x $
+                                                    {item.price} ={" "}
+                                                    <strong className="text-slate-200">
+                                                        $
+                                                        {item.quantity *
+                                                            item.price}
+                                                    </strong>
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

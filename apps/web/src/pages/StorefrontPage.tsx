@@ -150,7 +150,7 @@ export const StorefrontPage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                        {products.map((product) => {
+                        {(Array.isArray(products) ? products : [])?.map((product) => {
                             const qty = quantities[product.id] || 1;
                             const isOutOfStock = product.stock === 0;
                             const isSubmitting = submittingId === product.id;

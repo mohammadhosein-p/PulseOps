@@ -107,7 +107,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
 
                     <div className="space-y-3">
-                        {workers.map((w) => {
+                        {(Array.isArray(workers) ? workers : [])?.map((w) => {
                             const isAlive = w.status === "UP";
                             return (
                                 <div
