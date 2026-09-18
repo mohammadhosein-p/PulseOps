@@ -147,28 +147,28 @@ kibana:
 #       cpu: "500m"
 #       memory: "1Gi"
 
-# filebeat:
-#   enabled: true
-#   filebeatConfig:
-#     filebeat.yml: |
-#       filebeat.inputs:
-#         - type: container
-#           paths:
-#             - /var/log/pods/*/*/*.log
+filebeat:
+  enabled: true
+  filebeatConfig:
+    filebeat.yml: |
+      filebeat.inputs:
+        - type: container
+          paths:
+            - /var/log/pods/*/*/*.log
 
-#           processors:
-#             - add_kubernetes_metadata:
-#                 host: ${NODE_NAME}
-#                 matchers:
-#                   - logs_path:
-#                       logs_path: "/var/log/pods/"
+          processors:
+            - add_kubernetes_metadata:
+                host: ${NODE_NAME}
+                matchers:
+                  - logs_path:
+                      logs_path: "/var/log/pods/"
 
-#       output.logstash:
-#         hosts: ["observability-logstash:5044"]
-#   resources:
-#     requests:
-#       cpu: "50m"
-#       memory: "100Mi"
-#     limits:
-#       cpu: "200m"
-#       memory: "256Mi"
+      output.logstash:
+        hosts: ["observability-logstash:5044"]
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "100Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
