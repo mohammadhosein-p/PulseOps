@@ -73,11 +73,14 @@ elasticsearch:
   minimumMasterNodes: 1
   clusterHealthCheckParams: "wait_for_status=yellow&timeout=10s"
   esJavaOpts: "-Xmx1g -Xms1g"
+  extraEnvs:
+    - name: ELASTIC_PASSWORD
+      value: "PulseOpsElastic2026!"
   esConfig:
     elasticsearch.yml: |
-      xpack.security.enabled: false
-      xpack.security.http.ssl.enabled: false
-      xpack.security.transport.ssl.enabled: false
+      xpack.security.enabled: true
+      xpack.security.http.ssl.enabled: true
+      xpack.security.transport.ssl.enabled: true
   resources:
     requests:
       cpu: "200m"
@@ -124,22 +127,27 @@ logstash:
       }
       output {
         elasticsearch {
-          hosts => ["http://elasticsearch-master:9200"]
+          hosts => ["https://elasticsearch-master:9200"]
+          user => "elastic"
+          password => "PulseOpsElastic2026!"
+          ssl_certificate_verification => false
           index => "pulseops-logs-%{+YYYY.MM.dd}"
         }
       }
 
 kibana:
-  enabled: true
-  replicas: 1
-  elasticsearchHosts: "http://elasticsearch-master:9200"
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
+  enabled: false
+# kibana:
+#   enabled: true
+#   replicas: 1
+#   elasticsearchHosts: "http://elasticsearch-master:9200"
+#   resources:
+#     requests:
+#       cpu: "100m"
+#       memory: "512Mi"
+#     limits:
+#       cpu: "500m"
+#       memory: "1Gi"
 
 filebeat:
   enabled: true
