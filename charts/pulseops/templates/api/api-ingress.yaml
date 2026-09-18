@@ -7,10 +7,16 @@ metadata:
     app: pulseops-api
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className | default "nginx" | quote }}
+    cert-manager.io/cluster-issuer: selfsigned-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     {{- if .Values.ingress.annotations }}
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
     {{- end }}
 spec:
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Release.Name }}-tls
   rules:
     - host: {{ .Values.ingress.host }}
       http:
