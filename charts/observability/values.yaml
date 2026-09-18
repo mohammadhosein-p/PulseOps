@@ -133,8 +133,8 @@ kibana:
   enabled: true
   replicas: 1
   elasticsearchHosts: "http://elasticsearch-master:9200"
-  elasticsearchCertificateSecret: ""
-  elasticsearchServiceToken: "pulseops-bypass-token"
+  elasticsearchCertificateSecret: "elasticsearch-master-certs"
+  serviceAccountToken: "pulseops-bypass-token"
   resources:
     requests:
       cpu: "100m"
