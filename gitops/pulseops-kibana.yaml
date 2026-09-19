@@ -10,11 +10,15 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: "{{ gitops_repo_url | default('https://github.com/<YOUR_USER>/<YOUR_REPO>.git') }}"
+    repoURL: "https://github.com/mohammadhosein-p/PulseOps.git"
     targetRevision: main
     path: charts/kibana
+    helm:
+      releaseName: kibana
+      valueFiles:
+        - values.yaml
   destination:
-    server: https://kubernetes.default.svc
+    server: "https://kubernetes.default.svc"
     namespace: default
   syncPolicy:
     automated:
@@ -22,3 +26,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true

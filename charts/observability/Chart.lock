@@ -8,11 +8,8 @@ dependencies:
 - name: logstash
   repository: https://helm.elastic.co
   version: 8.5.1
-- name: kibana
-  repository: https://helm.elastic.co
-  version: 8.5.1
 - name: filebeat
   repository: https://helm.elastic.co
   version: 8.5.1
-digest: sha256:8f31194e025b78bb454834b5e59feb3448f444cf8a148b0a2cfe74829ba2064a
-generated: "2026-09-09T23:20:54.7451257+04:30"
+digest: sha256:fe7188cc89f55fd5ddefff114e99ecab6e8d81bd5df2f941f6cb5927038b2ebf
+generated: "2026-09-19T17:15:31.0555643+04:30"
