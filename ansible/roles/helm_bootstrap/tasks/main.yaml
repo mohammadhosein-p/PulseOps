@@ -178,3 +178,4 @@
   loop:
     - "{{ gitops_manifests_dir | default(playbook_dir ~ '/../gitops') }}/pulseops-app.yaml"
     - "{{ gitops_manifests_dir | default(playbook_dir ~ '/../gitops') }}/pulseops-observability.yaml"
+    - "{{ gitops_manifests_dir | default(playbook_dir ~ '/../gitops') }}/pulseops-kibana.yaml"
