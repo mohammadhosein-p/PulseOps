@@ -4,21 +4,6 @@
     path: /usr/local/bin/k3s
   register: k3s_binary
 
-- name: Configure K3s systemd proxy environment
-  ansible.builtin.copy:
-    dest: /etc/systemd/system/k3s.service.env
-    owner: root
-    group: root
-    mode: "0644"
-    content: |
-      HTTP_PROXY="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
-      HTTPS_PROXY="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
-      http_proxy="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
-      https_proxy="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
-      NO_PROXY="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
-      no_proxy="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
-  register: k3s_proxy_env
-
 - name: Download K3s installation script
   ansible.builtin.get_url:
     url: https://get.k3s.io
@@ -39,13 +24,6 @@
       --tls-san={{ k3s_api_endpoint }}
   when: not k3s_binary.stat.exists
   changed_when: true
-
-- name: Reload systemd and restart K3s if proxy configuration changed
-  ansible.builtin.systemd:
-    name: k3s
-    daemon_reload: true
-    state: restarted
-  when: k3s_binary.stat.exists and k3s_proxy_env.changed
 
 - name: Ensure K3s service is enabled and running
   ansible.builtin.systemd:
@@ -84,6 +62,28 @@
   retries: 12
   delay: 5
   until: k3s_nodes.resources | length > 0
+
+- name: Configure K3s systemd proxy environment
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/k3s.service.env
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      HTTP_PROXY="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      HTTPS_PROXY="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      http_proxy="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      https_proxy="http://127.0.0.1:{{ xray_http_port | default(1081) }}"
+      NO_PROXY="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
+      no_proxy="127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local"
+  register: k3s_proxy_env
+
+- name: Reload systemd and restart K3s if proxy configuration changed
+  ansible.builtin.systemd:
+    name: k3s
+    daemon_reload: true
+    state: restarted
+  when: k3s_binary.stat.exists and k3s_proxy_env.changed
 
 - name: Display Kubernetes nodes
   ansible.builtin.debug:
