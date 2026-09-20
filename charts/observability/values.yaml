@@ -68,6 +68,8 @@ kube-prometheus-stack:
       pullPolicy: IfNotPresent
 
 elasticsearch:
+  certificate:
+    enabled: true
   enabled: true
   replicas: 1
   minimumMasterNodes: 1

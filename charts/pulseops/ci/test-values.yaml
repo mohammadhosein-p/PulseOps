@@ -16,6 +16,8 @@ api:
     enabled: false
 
 web:
+  certificate:
+    enabled: false
   autoscaling:
     enabled: false
 

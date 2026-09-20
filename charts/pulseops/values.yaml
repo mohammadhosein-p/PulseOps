@@ -29,6 +29,8 @@ api:
     targetCPUUtilizationPercentage: 70
     targetMemoryUtilizationPercentage: 80
 web:
+  certificate:
+    enabled: true
   replicaCount: 1
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-web
