@@ -68,6 +68,7 @@ kube-prometheus-stack:
       pullPolicy: IfNotPresent
 
 elasticsearch:
+  existingSecret: "elasticsearch-master-credentials"
   certificate:
     enabled: true
   enabled: true

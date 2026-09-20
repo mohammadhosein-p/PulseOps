@@ -18,11 +18,13 @@
     - thanosrulers
   register: helm_bootstrap_crd_apply
   changed_when: "'configured' in helm_bootstrap_crd_apply.stdout or 'created' in helm_bootstrap_crd_apply.stdout"
+  # when: false
 
 - name: Check if Helm is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/helm
   register: helm_bootstrap_helm_binary
+  # when: false
 
 - name: Download Helm installation script
   ansible.builtin.get_url:
@@ -30,14 +32,16 @@
     dest: /tmp/get_helm.sh
     mode: "0700"
   when: not helm_bootstrap_helm_binary.stat.exists
+  # when: false
 
 - name: Install Helm
   ansible.builtin.command:
     cmd: /tmp/get_helm.sh
   # environment:
   #   DESIRED_VERSION: "{{ helm_bootstrap_helm_version if helm_bootstrap_helm_version | length > 0 else omit }}"
-  when: not helm_bootstrap_helm_binary.stat.exists
+  # when: not helm_bootstrap_helm_binary.stat.exists
   changed_when: true
+  # when: false
 
 - name: Add required Helm repositories
   kubernetes.core.helm_repository:
@@ -145,30 +149,34 @@
   delay: 3
   until: helm_bootstrap_argocd_crd_check.resources | length > 0
 
-# - name: Ensure Elasticsearch TLS certificates exist
-#   ansible.builtin.command: >
-#     openssl req -x509 -newkey rsa:2048 -nodes -days 3650
-#     -subj "/CN=elasticsearch-master"
-#     -keyout /tmp/es-tls.key
-#     -out /tmp/es-tls.crt
-#   args:
-#     creates: /tmp/es-tls.crt
+- name: Ensure Elasticsearch master credentials secret exists
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: elasticsearch-master-credentials
+        namespace: default
+        labels:
+          app.kubernetes.io/managed-by: Helm
+        annotations:
+          meta.helm.sh/release-name: observability
+          meta.helm.sh/release-namespace: default
+      type: Opaque
+      stringData:
+        username: elastic
+        password: "{{ elasticsearch_admin_password | default('PulseOpsElastic2026!') }}"
 
-# - name: Create or update elasticsearch-master-certs secret in Kubernetes
-#   kubernetes.core.k8s:
-#     state: present
-#     kubeconfig: /etc/rancher/k3s/k3s.yaml
-#     definition:
-#       apiVersion: v1
-#       kind: Secret
-#       metadata:
-#         name: elasticsearch-master-certs
-#         namespace: default
-#       type: Opaque
-#       data:
-#         ca.crt: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.crt') | b64encode }}"
-#         tls.crt: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.crt') | b64encode }}"
-#         tls.key: "{{ lookup('ansible.builtin.file', '/tmp/es-tls.key') | b64encode }}"
+- name: Display Elasticsearch credentials information
+  ansible.builtin.debug:
+    msg:
+      - "=========================================================="
+      - "Elasticsearch credentials secret has been provisioned."
+      - "Username: elastic"
+      - "Password: {{ elasticsearch_admin_password | default('PulseOpsElastic2026!') }}"
+      - "=========================================================="
 
 - name: Deploy ArgoCD Applications (from isolated gitops directory)
   kubernetes.core.k8s:
