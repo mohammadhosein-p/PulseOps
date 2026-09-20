@@ -95,6 +95,15 @@ logstash:
   enabled: true
   replicas: 1
   logstashJavaOpts: "-Xmx512m -Xms512m"
+  extraEnvs:
+    - name: ELASTIC_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: elasticsearch-master-credentials
+          key: password
+  logstashConfig:
+    logstash.yml: |
+      xpack.monitoring.enabled: false
   service:
     type: ClusterIP
     ports:
@@ -126,7 +135,7 @@ logstash:
         elasticsearch {
           hosts => ["https://elasticsearch-master:9200"]
           user => "elastic"
-          password => "PulseOpsElastic2026!"
+          password => "${ELASTIC_PASSWORD}"
           ssl_certificate_verification => false
           index => "pulseops-logs-%{+YYYY.MM.dd}"
         }
