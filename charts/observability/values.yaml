@@ -186,9 +186,6 @@ eck-stack:
 
     type: filebeat
 
-    elasticsearchRef:
-      name: elasticsearch
-
     daemonSet:
       podTemplate:
         spec:
@@ -215,10 +212,16 @@ eck-stack:
                   mountPath: /var/log/pods
                   readOnly: true
 
+                - name: filebeat-data
+                  mountPath: /usr/share/filebeat/data
+
           volumes:
             - name: varlogpods
               hostPath:
                 path: /var/log/pods
+
+            - name: filebeat-data
+              emptyDir: {}
 
     config:
       filebeat.inputs:
