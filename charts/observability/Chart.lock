@@ -2,14 +2,8 @@ dependencies:
 - name: kube-prometheus-stack
   repository: https://prometheus-community.github.io/helm-charts
   version: 61.3.1
-- name: elasticsearch
+- name: eck-stack
   repository: https://helm.elastic.co
-  version: 8.5.1
-- name: logstash
-  repository: https://helm.elastic.co
-  version: 8.5.1
-- name: filebeat
-  repository: https://helm.elastic.co
-  version: 8.5.1
-digest: sha256:fe7188cc89f55fd5ddefff114e99ecab6e8d81bd5df2f941f6cb5927038b2ebf
-generated: "2026-09-19T17:15:31.0555643+04:30"
+  version: 0.20.0
+digest: sha256:3afbc1f7ab095e36ae9a9c20c094f3fd9f276324afd189c9a5d28d53cd191e42
+generated: "2026-09-21T17:04:54.1203431+04:30"

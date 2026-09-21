@@ -16,15 +16,26 @@
     - scrapeconfigs
     - servicemonitors
     - thanosrulers
-  register: helm_bootstrap_crd_apply
-  changed_when: "'configured' in helm_bootstrap_crd_apply.stdout or 'created' in helm_bootstrap_crd_apply.stdout"
-  # when: false
+  register: helm_bootstrap_prometheus_crd_apply
+  changed_when: >
+    'configured' in helm_bootstrap_prometheus_crd_apply.stdout or
+    'created' in helm_bootstrap_prometheus_crd_apply.stdout
+
+- name: Ensure ECK CRDs are installed
+  ansible.builtin.command: >
+    kubectl apply --server-side --force-conflicts -f
+    https://download.elastic.co/downloads/eck/{{ helm_bootstrap_eck_version }}/crds.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: helm_bootstrap_eck_crd_apply
+  changed_when: >
+    'configured' in helm_bootstrap_eck_crd_apply.stdout or
+    'created' in helm_bootstrap_eck_crd_apply.stdout
 
 - name: Check if Helm is already installed
   ansible.builtin.stat:
     path: /usr/local/bin/helm
   register: helm_bootstrap_helm_binary
-  # when: false
 
 - name: Download Helm installation script
   ansible.builtin.get_url:
@@ -32,16 +43,12 @@
     dest: /tmp/get_helm.sh
     mode: "0700"
   when: not helm_bootstrap_helm_binary.stat.exists
-  # when: false
 
 - name: Install Helm
   ansible.builtin.command:
     cmd: /tmp/get_helm.sh
-  # environment:
-  #   DESIRED_VERSION: "{{ helm_bootstrap_helm_version if helm_bootstrap_helm_version | length > 0 else omit }}"
-  # when: not helm_bootstrap_helm_binary.stat.exists
+  when: not helm_bootstrap_helm_binary.stat.exists
   changed_when: true
-  # when: false
 
 - name: Add required Helm repositories
   kubernetes.core.helm_repository:
@@ -81,6 +88,19 @@
     kubeconfig: /etc/rancher/k3s/k3s.yaml
     values:
       installCRDs: true
+
+- name: Install ECK Operator
+  kubernetes.core.helm:
+    name: elastic-operator
+    chart_ref: elastic/eck-operator
+    chart_version: "{{ helm_bootstrap_eck_operator_chart_version }}"
+    release_namespace: elastic-system
+    create_namespace: true
+    state: present
+    wait: true
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    values:
+      installCRDs: false
 
 - name: Install ArgoCD
   kubernetes.core.helm:
@@ -149,36 +169,21 @@
   delay: 3
   until: helm_bootstrap_argocd_crd_check.resources | length > 0
 
-- name: Ensure Elasticsearch master credentials secret exists
-  kubernetes.core.k8s:
-    state: present
+- name: Wait for ECK Operator StatefulSet to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    namespace: elastic-system
+    name: elastic-operator
     kubeconfig: /etc/rancher/k3s/k3s.yaml
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: elasticsearch-master-credentials
-        namespace: default
-        labels:
-          app.kubernetes.io/managed-by: Helm
-        annotations:
-          meta.helm.sh/release-name: observability
-          meta.helm.sh/release-namespace: default
-      type: Opaque
-      stringData:
-        username: elastic
-        password: "{{ elasticsearch_admin_password | default('PulseOpsElastic2026!') }}"
+  register: helm_bootstrap_eck_operator_statefulset
+  retries: 30
+  delay: 5
+  until:
+    - helm_bootstrap_eck_operator_statefulset.resources | length > 0
+    - helm_bootstrap_eck_operator_statefulset.resources[0].status.readyReplicas | default(0) | int >= 1
 
-- name: Display Elasticsearch credentials information
-  ansible.builtin.debug:
-    msg:
-      - "=========================================================="
-      - "Elasticsearch credentials secret has been provisioned."
-      - "Username: elastic"
-      - "Password: {{ elasticsearch_admin_password | default('PulseOpsElastic2026!') }}"
-      - "=========================================================="
-
-- name: Deploy ArgoCD Applications (from isolated gitops directory)
+- name: Deploy ArgoCD Applications
   kubernetes.core.k8s:
     state: present
     kubeconfig: /etc/rancher/k3s/k3s.yaml
@@ -186,4 +191,3 @@
   loop:
     - "{{ gitops_manifests_dir | default(playbook_dir ~ '/../gitops') }}/pulseops-app.yaml"
     - "{{ gitops_manifests_dir | default(playbook_dir ~ '/../gitops') }}/pulseops-observability.yaml"
-    - "{{ gitops_manifests_dir | default(playbook_dir ~ '/../gitops') }}/pulseops-kibana.yaml"
