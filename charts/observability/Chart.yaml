@@ -2,7 +2,7 @@ apiVersion: v2
 name: observability
 description: Observability Stack for PulseOps (Metrics & Logs)
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "1.0.0"
 
 dependencies:
@@ -11,17 +11,7 @@ dependencies:
     repository: "https://prometheus-community.github.io/helm-charts"
     condition: kube-prometheus-stack.enabled
 
-  - name: elasticsearch
-    version: "8.5.1"
+  - name: eck-stack
+    version: "3.5.0"
     repository: "https://helm.elastic.co"
-    condition: elasticsearch.enabled
-
-  - name: logstash
-    version: "8.5.1"
-    repository: "https://helm.elastic.co"
-    condition: logstash.enabled
-
-  - name: filebeat
-    version: "8.5.1"
-    repository: "https://helm.elastic.co"
-    condition: filebeat.enabled
+    condition: eck-stack.enabled
