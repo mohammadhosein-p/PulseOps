@@ -14,5 +14,8 @@ helm_bootstrap_helm_repositories:
   - name: argo
     url: https://argoproj.github.io/argo-helm
 
+  - name: elastic
+    url: https://helm.elastic.co
+
 helm_bootstrap_eck_version: "3.5.0"
 helm_bootstrap_eck_operator_chart_version: "3.5.0"
