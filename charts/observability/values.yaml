@@ -71,34 +71,25 @@ kube-prometheus-stack:
 eck-stack:
   enabled: true
 
+  # Elasticsearch
   eck-elasticsearch:
     enabled: true
-
     fullnameOverride: elasticsearch
-
-    version: "9.5.3"
 
     nodeSets:
       - name: default
         count: 1
 
         config:
-          node.roles:
-            - master
-            - data
-            - ingest
+          node.store.allow_mmap: false
 
-        podTemplate:
-          spec:
-            containers:
-              - name: elasticsearch
-                resources:
-                  requests:
-                    cpu: "200m"
-                    memory: "1.2Gi"
-                  limits:
-                    cpu: "1000m"
-                    memory: "2Gi"
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "1.2Gi"
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
 
         volumeClaimTemplates:
           - metadata:
@@ -111,45 +102,33 @@ eck-stack:
                   storage: 5Gi
 
 
+  # Kibana
   eck-kibana:
     enabled: true
-
     count: 1
 
     elasticsearchRef:
       name: elasticsearch
 
-    podTemplate:
-      spec:
-        containers:
-          - name: kibana
-            resources:
-              requests:
-                cpu: "100m"
-                memory: "512Mi"
-              limits:
-                cpu: "500m"
-                memory: "1Gi"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
 
 
+  # Logstash
   eck-logstash:
     enabled: true
-
-    version: "9.5.3"
+    fullnameOverride: logstash
 
     count: 1
 
     elasticsearchRefs:
       - name: elasticsearch
-
-    services:
-      - name: beats
-        service:
-          ports:
-            - name: beats
-              port: 5044
-              protocol: TCP
-              targetPort: 5044
+        clusterName: eck
 
     pipelines:
       - pipeline.id: pulseops
@@ -169,13 +148,24 @@ eck-stack:
 
           output {
             elasticsearch {
-              hosts => ["https://elasticsearch-es-http:9200"]
-              user => "elastic"
-              password => "${ELASTIC_PASSWORD}"
-              ssl_certificate_verification => false
+              hosts => [ "${ECK_ES_HOSTS}" ]
+              user => "${ECK_ES_USER}"
+              password => "${ECK_ES_PASSWORD}"
+              ssl_certificate_authorities => "${ECK_ES_SSL_CERTIFICATE_AUTHORITY}"
               index => "pulseops-logs-%{+YYYY.MM.dd}"
             }
           }
+
+    services:
+      - name: beats
+        service:
+          spec:
+            type: ClusterIP
+            ports:
+              - name: beats
+                port: 5044
+                protocol: TCP
+                targetPort: 5044
 
     podTemplate:
       spec:
@@ -190,19 +180,19 @@ eck-stack:
                 memory: "1Gi"
 
 
+  # Filebeat
   eck-beats:
     enabled: true
 
     type: filebeat
 
-    version: "9.5.3"
-
-    elasticsearchRef: {}
+    elasticsearchRef:
+      name: elasticsearch
 
     daemonSet:
       podTemplate:
         spec:
-          serviceAccountName: filebeat
+          automountServiceAccountToken: true
 
           containers:
             - name: filebeat
@@ -245,4 +235,4 @@ eck-stack:
 
       output.logstash:
         hosts:
-          - "observability-eck-logstash-beats:5044"
+          - "logstash-ls-beats:5044"
