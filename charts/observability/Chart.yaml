@@ -12,6 +12,6 @@ dependencies:
     condition: kube-prometheus-stack.enabled
 
   - name: eck-stack
-    version: "3.5.0"
+    version: "0.20.0"
     repository: "https://helm.elastic.co"
     condition: eck-stack.enabled
