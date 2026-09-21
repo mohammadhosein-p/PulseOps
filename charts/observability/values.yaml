@@ -76,6 +76,10 @@ eck-stack:
     enabled: true
     fullnameOverride: elasticsearch
 
+    auth:
+      roles:
+        - secretName: elasticsearch-custom-roles
+
     nodeSets:
       - name: default
         count: 1

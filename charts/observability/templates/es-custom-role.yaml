@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: elasticsearch-custom-roles
+  namespace: default
+stringData:
+  roles.yml: |-
+    eck_logstash_user_role:
+      cluster:
+        - monitor
+        - manage_ilm
+        - read_ilm
+        - manage_logstash_pipelines
+        - manage_index_templates
+        - cluster:admin/ingest/pipeline/get
+      indices:
+        - names:
+            - logstash
+            - logstash-*
+            - ecs-logstash
+            - ecs-logstash-*
+            - logs-*
+            - metrics-*
+            - synthetics-*
+            - traces-*
+            - pulseops-logs-*
+          privileges:
+            - manage
+            - write
+            - create_index
+            - read
+            - view_index_metadata
