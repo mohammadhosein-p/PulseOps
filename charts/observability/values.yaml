@@ -67,88 +67,170 @@ kube-prometheus-stack:
       tag: v2.13.0
       pullPolicy: IfNotPresent
 
-elasticsearch:
-  existingSecret: "elasticsearch-master-credentials"
-  certificate:
+
+eck-stack:
+  enabled: true
+
+  eck-elasticsearch:
     enabled: true
-  enabled: true
-  replicas: 1
-  minimumMasterNodes: 1
-  clusterHealthCheckParams: "wait_for_status=yellow&timeout=10s"
-  esJavaOpts: "-Xmx1g -Xms1g"
-  esConfig:
-    elasticsearch.yml: |
-      xpack.security.enabled: true
-      xpack.security.http.ssl.enabled: true
-      xpack.security.transport.ssl.enabled: true
-  resources:
-    requests:
-      cpu: "200m"
-      memory: "1.2Gi"
-    limits:
-      cpu: "1000m"
-      memory: "2Gi"
-  volumeClaimTemplate:
-    accessModes: ["ReadWriteOnce"]
-    resources:
-      requests:
-        storage: 5Gi
 
-logstash:
-  enabled: true
-  replicas: 1
-  logstashJavaOpts: "-Xmx512m -Xms512m"
-  extraEnvs:
-    - name: ELASTIC_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: elasticsearch-master-credentials
-          key: password
-  logstashConfig:
-    logstash.yml: |
-      http.host: 0.0.0.0
-      xpack.monitoring.enabled: false
-  service:
-    type: ClusterIP
-    ports:
+    fullnameOverride: elasticsearch
+
+    version: "9.5.3"
+
+    nodeSets:
+      - name: default
+        count: 1
+
+        config:
+          node.roles:
+            - master
+            - data
+            - ingest
+
+        podTemplate:
+          spec:
+            containers:
+              - name: elasticsearch
+                resources:
+                  requests:
+                    cpu: "200m"
+                    memory: "1.2Gi"
+                  limits:
+                    cpu: "1000m"
+                    memory: "2Gi"
+
+        volumeClaimTemplates:
+          - metadata:
+              name: elasticsearch-data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 5Gi
+
+
+  eck-kibana:
+    enabled: true
+
+    count: 1
+
+    elasticsearchRef:
+      name: elasticsearch
+
+    podTemplate:
+      spec:
+        containers:
+          - name: kibana
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "512Mi"
+              limits:
+                cpu: "500m"
+                memory: "1Gi"
+
+
+  eck-logstash:
+    enabled: true
+
+    version: "9.5.3"
+
+    count: 1
+
+    elasticsearchRefs:
+      - name: elasticsearch
+
+    services:
       - name: beats
-        port: 5044
-        protocol: TCP
-        targetPort: 5044
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-  logstashPipeline:
-    logstash.conf: |
-      input {
-        beats {
-          port => 5044
-        }
-      }
-      filter {
-        json {
-          source => "message"
-          skip_on_invalid_json => true
-        }
-      }
-      output {
-        elasticsearch {
-          hosts => ["https://elasticsearch-master:9200"]
-          user => "elastic"
-          password => "${ELASTIC_PASSWORD}"
-          ssl_certificate_verification => false
-          index => "pulseops-logs-%{+YYYY.MM.dd}"
-        }
-      }
+        service:
+          ports:
+            - name: beats
+              port: 5044
+              protocol: TCP
+              targetPort: 5044
 
-filebeat:
-  enabled: true
-  filebeatConfig:
-    filebeat.yml: |
+    pipelines:
+      - pipeline.id: pulseops
+        config.string: |
+          input {
+            beats {
+              port => 5044
+            }
+          }
+
+          filter {
+            json {
+              source => "message"
+              skip_on_invalid_json => true
+            }
+          }
+
+          output {
+            elasticsearch {
+              hosts => ["https://elasticsearch-es-http:9200"]
+              user => "elastic"
+              password => "${ELASTIC_PASSWORD}"
+              ssl_certificate_verification => false
+              index => "pulseops-logs-%{+YYYY.MM.dd}"
+            }
+          }
+
+    podTemplate:
+      spec:
+        containers:
+          - name: logstash
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "512Mi"
+              limits:
+                cpu: "500m"
+                memory: "1Gi"
+
+
+  eck-beats:
+    enabled: true
+
+    type: filebeat
+
+    version: "9.5.3"
+
+    elasticsearchRef: {}
+
+    daemonSet:
+      podTemplate:
+        spec:
+          serviceAccountName: filebeat
+
+          containers:
+            - name: filebeat
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "100Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+
+              env:
+                - name: NODE_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
+
+              volumeMounts:
+                - name: varlogpods
+                  mountPath: /var/log/pods
+                  readOnly: true
+
+          volumes:
+            - name: varlogpods
+              hostPath:
+                path: /var/log/pods
+
+    config:
       filebeat.inputs:
         - type: container
           paths:
@@ -162,11 +244,5 @@ filebeat:
                       logs_path: "/var/log/pods/"
 
       output.logstash:
-        hosts: ["observability-logstash:5044"]
-  resources:
-    requests:
-      cpu: "50m"
-      memory: "100Mi"
-    limits:
-      cpu: "200m"
-      memory: "256Mi"
+        hosts:
+          - "observability-eck-logstash-beats:5044"
