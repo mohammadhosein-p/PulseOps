@@ -86,7 +86,7 @@ eck-stack:
         resources:
           requests:
             cpu: "200m"
-            memory: "1.2Gi"
+            memory: "2Gi"
           limits:
             cpu: "1000m"
             memory: "2Gi"
@@ -225,9 +225,13 @@ eck-stack:
 
     config:
       filebeat.inputs:
-        - type: container
+        - type: filestream
+          id: kubernetes-container-logs
           paths:
             - /var/log/pods/*/*/*.log
+
+          parsers:
+            - container: {}
 
           processors:
             - add_kubernetes_metadata:
