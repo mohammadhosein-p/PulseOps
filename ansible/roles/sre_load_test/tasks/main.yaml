@@ -1,4 +1,13 @@
 ---
+- name: Ensure Prometheus SLO rules and alerts are applied
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    definition: "{{ lookup('ansible.builtin.file', item) | from_yaml }}"
+  loop:
+    - "{{ playbook_dir }}/../sre/slo/slo-recording-rules.yaml"
+    - "{{ playbook_dir }}/../sre/alerts/slo-alerts.yaml"
+
 - name: Ensure load test working directory exists on target host
   ansible.builtin.file:
     path: /tmp/pulseops-load-test
