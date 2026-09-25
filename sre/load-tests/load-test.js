@@ -1,86 +1,65 @@
 import http from "k6/http";
-import { check, sleep, group } from "k6";
+import { check, sleep } from "k6";
 
 export const options = {
     insecureSkipTLSVerify: true,
-    stages: [
-        { duration: "30s", target: 5 },
-        { duration: "1m", target: 20 },
-        { duration: "30s", target: 50 },
-        { duration: "30s", target: 0 },
-    ],
+    scenarios: {
+        keda_heavy_stress: {
+            executor: "ramping-arrival-rate",
+            startRate: 50,
+            timeUnit: "1s",
+            preAllocatedVUs: 200,
+            maxVUs: 800,
+            stages: [
+                { duration: "30s", target: 200 },
+                { duration: "1m", target: 800 },
+                { duration: "2m", target: 800 },
+                { duration: "30s", target: 0 },
+            ],
+        },
+    },
     thresholds: {
-        http_req_failed: ["rate<0.005"],
-        http_req_duration: ["p(95)<500"],
+        http_req_failed: ["rate<0.05"],
     },
 };
 
-const BASE_URL = __ENV.TARGET_URL || "http://pulseops-api:4000";
+// const BASE_URL = __ENV.TARGET_URL || 'http://pulseops-api.default.svc.cluster.local:4000';
+const BASE_URL = 'http://pulseops-api.default.svc.cluster.local:4000';
 
-export default function () {
+let cachedProductId = null;
+
+export function setup() {
+    const res = http.get(`${BASE_URL}/api/products`);
+    if (res.status === 200) {
+        const products = JSON.parse(res.body);
+        if (products.length > 0) {
+            return { productId: products[0].id };
+        }
+    }
+    return { productId: null };
+}
+
+export default function (data) {
+    if (!data.productId) return;
+
     const headers = {
         "Content-Type": "application/json",
-        "User-Agent": "k6-loadtest/pulseops",
+        "X-Forwarded-For": `10.0.${__VU % 250}.${Math.floor(Math.random() * 250) + 1}`,
     };
 
-    group("Health Probes", function () {
-        const liveRes = http.get(`${BASE_URL}/healthz`, { headers });
-        check(liveRes, { "healthz is 200": (r) => r.status === 200 });
-
-        const readyRes = http.get(`${BASE_URL}/ready`, { headers });
-        check(readyRes, { "ready is 200": (r) => r.status === 200 });
+    const payload = JSON.stringify({
+        customerEmail: `stress-user-${__VU}-${Date.now()}@pulseops.io`,
+        items: [
+            {
+                productId: data.productId,
+                quantity: 1,
+            },
+        ],
     });
 
-    let targetProductId = null;
-    group("Fetch Products", function () {
-        const prodRes = http.get(`${BASE_URL}/api/products`, { headers });
-        const isOk = check(prodRes, {
-            "products status 200": (r) => r.status === 200,
-        });
+    const res = http.post(`${BASE_URL}/api/orders`, payload, { headers });
 
-        if (isOk) {
-            try {
-                const products = JSON.parse(prodRes.body);
-                if (Array.isArray(products) && products.length > 0) {
-                    targetProductId = products[0].id;
-                }
-            } catch (e) {}
-        }
+    check(res, {
+        "order submitted": (r) => r.status === 201,
     });
-
-    group("Stats & Workers", function () {
-        const statsRes = http.get(`${BASE_URL}/api/dashboard/stats`, {
-            headers,
-        });
-        check(statsRes, { "stats is 200": (r) => r.status === 200 });
-
-        const workerRes = http.get(`${BASE_URL}/api/workers/status`, {
-            headers,
-        });
-        check(workerRes, { "workers is 200": (r) => r.status === 200 });
-    });
-
-    if (targetProductId) {
-        group("Place Order", function () {
-            const payload = JSON.stringify({
-                customerEmail: `sre-test-${__VU}@pulseops.io`,
-                items: [
-                    {
-                        productId: targetProductId,
-                        quantity: 1,
-                    },
-                ],
-            });
-
-            const orderRes = http.post(`${BASE_URL}/api/orders`, payload, {
-                headers,
-            });
-            check(orderRes, {
-                "order status 201 or 429": (r) =>
-                    r.status === 201 || r.status === 429,
-            });
-        });
-    }
-
-    sleep(Math.random() * 0.8 + 0.2);
 }

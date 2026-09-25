@@ -24,11 +24,11 @@ spec:
               mountPath: /scripts
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "1000m"
+              memory: "512Mi"
             limits:
-              cpu: "500m"
-              memory: "256Mi"
+              cpu: "1500m"
+              memory: "1024Mi"
       volumes:
         - name: script-volume
           configMap:
