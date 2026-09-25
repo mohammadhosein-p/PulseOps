@@ -1,0 +1,123 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pulseops-slo-recording-rules
+  namespace: default
+  labels:
+    role: alert-rules
+    app.kubernetes.io/name: kube-prometheus-stack
+    release: observability
+spec:
+  groups:
+    - name: pulseops-slo-api
+      interval: 30s
+      rules:
+        - record: pulseops:sli:api_requests:rate5m
+          expr: |
+            sum(rate(http_request_duration_seconds_count[5m]))
+
+        - record: pulseops:sli:api_requests:good_rate5m
+          expr: |
+            sum(
+              rate(http_request_duration_seconds_count{status_code!~"5.."}[5m])
+            )
+
+        - record: pulseops:sli:api_requests:bad_rate5m
+          expr: |
+            sum(
+              rate(http_request_duration_seconds_count{status_code=~"5.."}[5m])
+            )
+
+        - record: pulseops:sli:api_availability:ratio5m
+          expr: |
+            1 -
+            (
+              pulseops:sli:api_requests:bad_rate5m
+              /
+              pulseops:sli:api_requests:rate5m
+            )
+
+        - record: pulseops:sli:api_latency:p95_5m
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(http_request_duration_seconds_bucket[5m])
+              )
+            )
+
+        - record: pulseops:slo:api_availability:error_ratio5m
+          expr: |
+            1 - pulseops:sli:api_availability:ratio5m
+
+        - record: pulseops:slo:api_availability:error_budget_remaining
+          expr: |
+            1 -
+            (
+              pulseops:slo:api_availability:error_ratio5m
+              / 0.005
+            )
+
+    - name: pulseops-slo-workers
+      interval: 30s
+      rules:
+        - record: pulseops:sli:worker_events:rate5m
+          expr: |
+            sum(
+              rate(pulseops_worker_processed_events_total[5m])
+            )
+
+        - record: pulseops:sli:worker_events:success_rate5m
+          expr: |
+            sum(
+              rate(
+                pulseops_worker_processed_events_total{
+                  status="success"
+                }[5m]
+              )
+            )
+
+        - record: pulseops:sli:worker_events:error_rate5m
+          expr: |
+            sum(
+              rate(
+                pulseops_worker_processed_events_total{
+                  status!="success"
+                }[5m]
+              )
+            )
+
+        - record: pulseops:sli:worker_processing:success_ratio5m
+          expr: |
+            pulseops:sli:worker_events:success_rate5m
+            /
+            pulseops:sli:worker_events:rate5m
+
+        - record: pulseops:slo:worker_processing:error_ratio5m
+          expr: |
+            1 - pulseops:sli:worker_processing:success_ratio5m
+
+        - record: pulseops:slo:worker_processing:error_budget_remaining
+          expr: |
+            1 -
+            (
+              pulseops:slo:worker_processing:error_ratio5m
+              / 0.005
+            )
+
+    - name: pulseops-slo-burn-rate
+      interval: 30s
+      rules:
+        - record: pulseops:slo:api_availability:burn_rate5m
+          expr: |
+            (
+              1 - pulseops:sli:api_availability:ratio5m
+            )
+            / 0.005
+
+        - record: pulseops:slo:worker_processing:burn_rate5m
+          expr: |
+            (
+              1 - pulseops:sli:worker_processing:success_ratio5m
+            )
+            / 0.005

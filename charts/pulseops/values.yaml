@@ -22,6 +22,8 @@ api:
     requests:
       cpu: 150m
       memory: 256Mi
+  env: 
+    RATE_LIMIT_MAX_ORDERS: "50000"
   autoscaling:
     enabled: true
     minReplicas: 1

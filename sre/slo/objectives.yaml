@@ -1,0 +1,33 @@
+version: "1.0"
+
+service: pulseops
+
+slos:
+  - name: api-availability
+    description: "Percentage of API requests that are not server-side errors"
+    target: 99.5
+    window: 30d
+    indicator:
+      type: availability
+      metric: http_request_duration_seconds
+      bad_status_codes:
+        - "5xx"
+
+  - name: api-latency
+    description: "Percentage of API requests completed within 500ms"
+    target: 99.0
+    window: 30d
+    indicator:
+      type: latency
+      metric: http_request_duration_seconds
+      threshold_seconds: 0.5
+
+  - name: worker-processing-success
+    description: "Percentage of worker events processed successfully"
+    target: 99.5
+    window: 30d
+    indicator:
+      type: success_rate
+      metric: pulseops_worker_processed_events_total
+      success_label:
+        status: success

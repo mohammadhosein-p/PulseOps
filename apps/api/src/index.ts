@@ -27,7 +27,7 @@ app.use(cors());
 
 const orderRateLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 5,
+    max: Number(process.env.RATE_LIMIT_MAX_ORDERS) || 5,
     standardHeaders: true,
     legacyHeaders: false,
     store: new RedisStore({

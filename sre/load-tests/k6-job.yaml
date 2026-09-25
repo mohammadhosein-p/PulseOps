@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pulseops-load-test
+  namespace: default
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: pulseops-load-test
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:latest
+          command: ["k6", "run", "/scripts/load-test.js"]
+          env:
+            - name: TARGET_URL
+              value: "http://pulseops-api:4000"
+          volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "512Mi"
+            limits:
+              cpu: "1500m"
+              memory: "1024Mi"
+      volumes:
+        - name: script-volume
+          configMap:
+            name: k6-loadtest-script
