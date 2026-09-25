@@ -31,3 +31,4 @@
       tags:
         - sre
         - loadtest
+      when: false

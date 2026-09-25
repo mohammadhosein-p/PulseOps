@@ -1,68 +1,78 @@
-groups:
-  - name: pulseops-slo-alerts
-    interval: 30s
-    rules:
-      - alert: PulseOpsAPIAvailabilityFastBurn
-        expr: |
-          pulseops:slo:api_availability:burn_rate5m > 14.4
-        for: 2m
-        labels:
-          severity: critical
-          service: pulseops-api
-          slo: api-availability
-        annotations:
-          summary: "PulseOps API is consuming error budget too quickly"
-          description: "API availability is burning the 30-day error budget at more than 14.4x the allowed rate."
-          runbook: "sre/runbooks/api-availability.md"
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pulseops-slo-alerting-rules
+  namespace: default
+  labels:
+    role: alert-rules
+    app.kubernetes.io/name: kube-prometheus-stack
+    release: observability
+spec:
+  groups:
+    - name: pulseops-slo-alerts
+      interval: 30s
+      rules:
+        - alert: PulseOpsAPIAvailabilityFastBurn
+          expr: |
+            pulseops:slo:api_availability:burn_rate5m > 14.4
+          for: 2m
+          labels:
+            severity: critical
+            service: pulseops-api
+            slo: api-availability
+          annotations:
+            summary: "PulseOps API is consuming error budget too quickly"
+            description: "API availability is burning the 30-day error budget at more than 14.4x the allowed rate."
+            runbook: "sre/runbooks/api-availability.md"
 
-      - alert: PulseOpsAPIAvailabilitySlowBurn
-        expr: |
-          pulseops:slo:api_availability:burn_rate5m > 6
-        for: 15m
-        labels:
-          severity: warning
-          service: pulseops-api
-          slo: api-availability
-        annotations:
-          summary: "PulseOps API is slowly consuming error budget"
-          description: "API availability is burning the 30-day error budget at more than 6x the allowed rate."
-          runbook: "sre/runbooks/api-availability.md"
+        - alert: PulseOpsAPIAvailabilitySlowBurn
+          expr: |
+            pulseops:slo:api_availability:burn_rate5m > 6
+          for: 15m
+          labels:
+            severity: warning
+            service: pulseops-api
+            slo: api-availability
+          annotations:
+            summary: "PulseOps API is slowly consuming error budget"
+            description: "API availability is burning the 30-day error budget at more than 6x the allowed rate."
+            runbook: "sre/runbooks/api-availability.md"
 
-      - alert: PulseOpsAPILatencyHigh
-        expr: |
-          pulseops:sli:api_latency:p95_5m > 0.5
-        for: 5m
-        labels:
-          severity: warning
-          service: pulseops-api
-          slo: api-latency
-        annotations:
-          summary: "PulseOps API p95 latency is above SLO"
-          description: "API p95 latency has been above 500ms for at least 5 minutes."
-          runbook: "sre/runbooks/api-latency.md"
+        - alert: PulseOpsAPILatencyHigh
+          expr: |
+            pulseops:sli:api_latency:p95_5m > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            service: pulseops-api
+            slo: api-latency
+          annotations:
+            summary: "PulseOps API p95 latency is above SLO"
+            description: "API p95 latency has been above 500ms for at least 5 minutes."
+            runbook: "sre/runbooks/api-latency.md"
 
-      - alert: PulseOpsWorkerProcessingFastBurn
-        expr: |
-          pulseops:slo:worker_processing:burn_rate5m > 14.4
-        for: 2m
-        labels:
-          severity: critical
-          service: pulseops-workers
-          slo: worker-processing-success
-        annotations:
-          summary: "PulseOps workers are consuming error budget too quickly"
-          description: "Worker processing failures are burning the 30-day error budget at more than 14.4x the allowed rate."
-          runbook: "sre/runbooks/worker-processing.md"
+        - alert: PulseOpsWorkerProcessingFastBurn
+          expr: |
+            pulseops:slo:worker_processing:burn_rate5m > 14.4
+          for: 2m
+          labels:
+            severity: critical
+            service: pulseops-workers
+            slo: worker-processing-success
+          annotations:
+            summary: "PulseOps workers are consuming error budget too quickly"
+            description: "Worker processing failures are burning the 30-day error budget at more than 14.4x the allowed rate."
+            runbook: "sre/runbooks/worker-processing.md"
 
-      - alert: PulseOpsWorkerProcessingSlowBurn
-        expr: |
-          pulseops:slo:worker_processing:burn_rate5m > 6
-        for: 15m
-        labels:
-          severity: warning
-          service: pulseops-workers
-          slo: worker-processing-success
-        annotations:
-          summary: "PulseOps workers are slowly consuming error budget"
-          description: "Worker processing failures are burning the 30-day error budget at more than 6x the allowed rate."
-          runbook: "sre/runbooks/worker-processing.md"
+        - alert: PulseOpsWorkerProcessingSlowBurn
+          expr: |
+            pulseops:slo:worker_processing:burn_rate5m > 6
+          for: 15m
+          labels:
+            severity: warning
+            service: pulseops-workers
+            slo: worker-processing-success
+          annotations:
+            summary: "PulseOps workers are slowly consuming error budget"
+            description: "Worker processing failures are burning the 30-day error budget at more than 6x the allowed rate."
+            runbook: "sre/runbooks/worker-processing.md"
