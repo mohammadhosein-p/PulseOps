@@ -32,7 +32,7 @@
     cmd: kubectl wait --for=condition=complete --timeout=360s job/pulseops-load-test -n default
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  register: k6_job_status
+  register: sre_load_test_k6_job_status
   changed_when: false
 
 - name: Fetch k6 execution logs and SLO results
@@ -40,12 +40,12 @@
     cmd: kubectl logs job/pulseops-load-test -n default
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  register: k6_job_logs
+  register: sre_load_test_k6_job_logs
   changed_when: false
 
 - name: Display k6 load testing summary
   ansible.builtin.debug:
-    msg: "{{ k6_job_logs.stdout_lines }}"
+    msg: "{{ sre_load_test_k6_job_logs.stdout_lines }}"
 
 - name: Cleanup temporary load test directory
   ansible.builtin.file:

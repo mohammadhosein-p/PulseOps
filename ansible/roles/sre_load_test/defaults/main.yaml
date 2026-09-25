@@ -1,0 +1,2 @@
+---
+sre_load_tests_dir: "{{ playbook_dir }}/../sre/load-tests"
