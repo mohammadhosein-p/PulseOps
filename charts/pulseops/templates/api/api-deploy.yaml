@@ -51,6 +51,8 @@ spec:
               value: "redis://{{ .Release.Name }}-redis-master:6379"
             - name: KAFKA_BROKER
               value: "{{ .Release.Name }}-kafka:9092"
+            - name: RATE_LIMIT_MAX_ORDERS
+              value: {{- .Values.api.env.RATE_LIMIT_MAX_ORDERS -}}
           livenessProbe:
             httpGet:
               path: /healthz
