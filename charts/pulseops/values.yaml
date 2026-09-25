@@ -10,7 +10,7 @@ api:
     enabled: true
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-api
-    tag: sha-7a9609d
+    tag: sha-41d76dd
     pullPolicy: Always
   service:
     type: ClusterIP
@@ -22,7 +22,7 @@ api:
     requests:
       cpu: 150m
       memory: 256Mi
-  env: 
+  env:
     RATE_LIMIT_MAX_ORDERS: "50000"
   autoscaling:
     enabled: true
@@ -36,7 +36,7 @@ web:
   replicaCount: 1
   image:
     repository: ghcr.io/mohammadhosein-p/pulseops-web
-    tag: sha-7a9609d
+    tag: sha-41d76dd
     pullPolicy: Always
   service:
     type: NodePort
@@ -60,7 +60,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-payment-worker
-      tag: sha-7a9609d
+      tag: sha-41d76dd
     processingDelayMs: 1500
     resources:
       limits:
@@ -81,7 +81,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-inventory-worker
-      tag: sha-7a9609d
+      tag: sha-41d76dd
     processingDelayMs: 1000
     resources:
       limits:
@@ -102,7 +102,7 @@ workers:
     replicaCount: 1
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-notification-worker
-      tag: sha-7a9609d
+      tag: sha-41d76dd
     processingDelayMs: 500
     resources:
       limits:
