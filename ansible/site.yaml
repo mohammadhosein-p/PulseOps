@@ -26,3 +26,8 @@
       tags:
         - helm
         - platform
+
+    - role: sre_load_test
+      tags:
+        - sre
+        - loadtest

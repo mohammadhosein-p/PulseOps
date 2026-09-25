@@ -1,0 +1,53 @@
+---
+- name: Ensure load test working directory exists on target host
+  ansible.builtin.file:
+    path: /tmp/pulseops-load-test
+    state: directory
+    mode: "0755"
+
+- name: Copy load test assets from external SRE directory
+  ansible.builtin.copy:
+    src: "{{ sre_load_tests_dir }}/"
+    dest: /tmp/pulseops-load-test/
+    mode: "0644"
+
+- name: Remove previous load test job if exists
+  kubernetes.core.k8s:
+    state: absent
+    api_version: batch/v1
+    kind: Job
+    name: pulseops-load-test
+    namespace: default
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+- name: Apply k6 load test via Kustomize
+  ansible.builtin.command:
+    cmd: kubectl apply -k /tmp/pulseops-load-test
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: true
+
+- name: Wait for k6 load test job to finish
+  ansible.builtin.command:
+    cmd: kubectl wait --for=condition=complete --timeout=360s job/pulseops-load-test -n default
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: k6_job_status
+  changed_when: false
+
+- name: Fetch k6 execution logs and SLO results
+  ansible.builtin.command:
+    cmd: kubectl logs job/pulseops-load-test -n default
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: k6_job_logs
+  changed_when: false
+
+- name: Display k6 load testing summary
+  ansible.builtin.debug:
+    msg: "{{ k6_job_logs.stdout_lines }}"
+
+- name: Cleanup temporary load test directory
+  ansible.builtin.file:
+    path: /tmp/pulseops-load-test
+    state: absent
