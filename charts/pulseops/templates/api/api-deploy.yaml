@@ -18,17 +18,7 @@ spec:
         - name: wait-for-postgres
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z -w 2 {{ .Release.Name }}-postgresql 5432; do echo waiting for db; sleep 2; done;']
-        - name: db-migration
-          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
-          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
-          command:
-            - sh
-            - -c
-            - npx prisma db push --skip-generate && npx prisma db seed
 
-          env:
-            - name: DATABASE_URL
-              value: "postgresql://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ .Release.Name }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?schema=public"
       containers:
         
         - name: api
