@@ -76,3 +76,16 @@ spec:
             summary: "PulseOps workers are slowly consuming error budget"
             description: "Worker processing failures are burning the 30-day error budget at more than 6x the allowed rate."
             runbook: "sre/runbooks/worker-processing.md"
+
+        - alert: PulseOpsWorkerProcessingBudgetRemaining
+          expr: |
+            pulseops:slo:worker_processing:burn_rate5m > 6
+          for: 15m
+          labels:
+            severity: warning
+            service: pulseops-workers
+            slo: worker-processing-success
+          annotations:
+            summary: "PulseOps workers are slowly consuming error budget"
+            description: "Worker processing failures are burning the 30-day error budget at more than 6x the allowed rate."
+            runbook: "sre/runbooks/worker-processing.md"
