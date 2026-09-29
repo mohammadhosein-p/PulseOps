@@ -63,8 +63,8 @@ async function run() {
             );
 
             try {
-                // const delay = Number(process.env.PROCESSING_DELAY_MS) || 1500;
-                // await sleep(delay);
+                const delay = Number(process.env.PROCESSING_DELAY_MS) || 100;
+                await sleep(delay);
 
                 const isDeclined = Number(orderData.totalAmount) > 10000;
 

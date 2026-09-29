@@ -65,9 +65,9 @@ async function run() {
                     );
 
                     try {
-                        // const delay =
-                        //     Number(process.env.PROCESSING_DELAY_MS) || 1000;
-                        // await sleep(delay);
+                        const delay =
+                            Number(process.env.PROCESSING_DELAY_MS) || 50;
+                        await sleep(delay);
 
                         await prisma.$transaction(async (tx) => {
                             for (const item of items) {
