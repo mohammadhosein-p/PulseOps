@@ -119,8 +119,8 @@ async function run() {
                 const recipient = order?.customerEmail || "unknown-customer";
 
                 // notification delay simulation
-                const delay = Number(process.env.PROCESSING_DELAY_MS) || 600;
-                await sleep(delay);
+                // const delay = Number(process.env.PROCESSING_DELAY_MS) || 600;
+                // await sleep(delay);
 
                 const notification = buildNotification(
                     topic,
