@@ -61,7 +61,7 @@ workers:
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-payment-worker
       tag: sha-6cf07c9
-    processingDelayMs: 500
+    processingDelayMs: 0
     resources:
       limits:
         cpu: 350m
@@ -82,7 +82,7 @@ workers:
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-inventory-worker
       tag: sha-6cf07c9
-    processingDelayMs: 50
+    processingDelayMs: 0
     resources:
       limits:
         cpu: 350m
@@ -103,7 +103,7 @@ workers:
     image:
       repository: ghcr.io/mohammadhosein-p/pulseops-notification-worker
       tag: sha-6cf07c9
-    processingDelayMs: 500
+    processingDelayMs: 0
     resources:
       limits:
         cpu: 200m
