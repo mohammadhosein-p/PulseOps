@@ -74,7 +74,7 @@ workers:
       minReplicas: 1
       maxReplicas: 5
       triggers:
-        - topic: order-created
+        - topic: inventory-allocated
           consumerGroup: payment-service-group
           lagThreshold: "20"
   inventory:
